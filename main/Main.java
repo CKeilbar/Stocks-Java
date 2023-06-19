@@ -388,7 +388,7 @@ public class Main {
         //Clone now holds only valid values
         Map<String, Float> retMap = new LinkedHashMap();//Order is required
         for(Entry i : clone){
-            String myTag = i.valueForTag(axis);
+            String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
             retMap.put(myTag, i.getValue() + retMap.getOrDefault(myTag, 0f));
         }
         return retMap;
@@ -435,10 +435,6 @@ public class Main {
                 }
                 else{
                 }
-            }
-            if("".equals(axisTag)){
-                JOptionPane.showMessageDialog(frame, "No axis specified.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
             }
             Map<String, Float> graphable = findGraphables(axisTag, includeValues, includeValueTags, removeValues, removeValueTags);
             if(graphable == null){
@@ -513,17 +509,15 @@ public class Main {
         for(int i = 0; i < tags.length; i++){
             JButton tagNameButton = new JButton(tags[i]);
             tagNameButton.addActionListener(e -> {
+                Color currentColor = tagNameButton.getBackground();
                 //Toggle off all other buttons
                 for(int j = 0; j < tags.length; j++){
                     Component buttonToExamine = graphPaneTag.getComponent(j*(widestRow+1));
                     buttonToExamine.setBackground(UIManager.getColor("Button.background"));
                 }
                 //Set my background
-                if(tagNameButton.getBackground() != Color.GREEN){
+                if(currentColor != Color.GREEN){
                     tagNameButton.setBackground(Color.GREEN);
-                }
-                else{
-                    tagNameButton.setBackground(UIManager.getColor("Button.background"));
                 }
             });
             graphPaneTag.add(tagNameButton);
@@ -727,20 +721,11 @@ public class Main {
                             float price = 0f;
                             String priceText = priceField.getText();
                             String tickerText = tickerField.getText();
-                            if(!willUpdatePrice){
-                                try{
-                                    price = Float.parseFloat(priceText);
-                                } catch(NumberFormatException ex){
-                                    msg = "Could not interpret the price field (" + priceText + ") as text.";
-                                    resultPassed = false;
-                                }
-                            }
-                            else{
-                                price = PriceWorker.updatePrice(tickerText);
-                                if(price == -1f){
-                                    msg = "Could not find a price for the ticker (" + tickerText + ").";
-                                    resultPassed = false;
-                                }
+                            try{
+                                price = Float.parseFloat(priceText);
+                            } catch(NumberFormatException ex){
+                                msg = "Could not interpret the price field (" + priceText + ") as text.";
+                                resultPassed = false;
                             }
                             if(resultPassed){
                                 //Modify the entry
