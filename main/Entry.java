@@ -4,13 +4,13 @@ import java.util.*;
 
 //Entries contain a quantity, price, and an optional map of categorizing tags
 class Entry {
-    private int quantity;
+    private float quantity;
     private boolean updatePrice;
     private String ticker;
     private float price;
     private Map<String, String> tagMap;
 
-    public Entry(String Ticker, int Quantity, boolean UpdatePrice, float Price){
+    public Entry(String Ticker, float Quantity, boolean UpdatePrice, float Price){
         ticker = Ticker;
         quantity = Quantity;
         updatePrice = UpdatePrice;
@@ -39,7 +39,7 @@ class Entry {
     }
 
     public String getQuantity(){
-        return Integer.toString(quantity);
+        return Float.toString(quantity);
     };
 
     public boolean containsPair(String key, String value){
@@ -60,7 +60,7 @@ class Entry {
 
     //The line that gets saved in the file
     public String saveableLine(){
-        String essentials = String.join(",", ticker, Integer.toString(quantity), (updatePrice ? "yes" : "no"), Float.toString(price));
+        String essentials = String.join(",", ticker, Float.toString(quantity), (updatePrice ? "yes" : "no"), Float.toString(price));
         String tags = System.lineSeparator();
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             tags = "," + i.getKey() + "," + i.getValue() + tags;
@@ -71,7 +71,7 @@ class Entry {
 
     //The line that gets written to the display
     public String displayLine(){
-        String summary = String.join(", ", "Ticker: " + ticker, "Quantity: " + Integer.toString(quantity), "Price: " + Float.toString(price));
+        String summary = String.join(", ", "Ticker: " + ticker, "Quantity: " + Float.toString(quantity), "Price: " + Float.toString(price));
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             summary += ", " + i.getKey() + ": " + i.getValue();
         }

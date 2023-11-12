@@ -67,7 +67,7 @@ public class Main {
             //name, quantity, updatePrice, price, [optional tag 1, optional value 1], ...
             while((line = br.readLine()) != null){
                 String[] splitLine = line.split(",");
-                Entry currentEntry = new Entry(splitLine[0], Integer.parseInt(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
+                Entry currentEntry = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
                 for(int i = 4; i < splitLine.length; i += 2){
                     currentEntry.addValue(splitLine[i], splitLine[i+1]);
                     tagMap.addEntry(splitLine[i], splitLine[i+1]);
@@ -225,10 +225,10 @@ public class Main {
             String msg = "The entry was created successfully.";
             boolean resultPassed = true;
 
-            int quantity = 0;
+            float quantity = 0;
             String quantityText = quantityField.getText();
             try{
-                quantity = Integer.parseInt(quantityText);
+                quantity = Float.parseFloat(quantityText);
             } catch(NumberFormatException ex){
                 msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
                 resultPassed = false;
@@ -709,10 +709,10 @@ public class Main {
                             String msg = "The entry was modified successfully.";
                             boolean resultPassed = true;
 
-                            int quantity = 0;
+                            float quantity = 0;
                             String quantityText = quantityField.getText();
                             try{
-                                quantity = Integer.parseInt(quantityText);
+                                quantity = Float.parseFloat(quantityText);
                             } catch(NumberFormatException ex){
                                 msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
                                 resultPassed = false;
