@@ -386,12 +386,15 @@ public class Main {
             }
         }
         //Clone now holds only valid values
-        Collections.sort(clone, Collections.reverseOrder());
-        Map<String, Float> retMap = new LinkedHashMap();//Order is required
+        Map<String, Float> unsortedMap = new HashMap();
         for(Entry i : clone){
             String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
-            retMap.put(myTag, i.getValue() + retMap.getOrDefault(myTag, 0f));
+            unsortedMap.put(myTag, i.getValue() + unsortedMap.getOrDefault(myTag, 0f));
         }
+
+        Map<String, Float> retMap = new LinkedHashMap();//Order is required
+        //Sort by value
+        unsortedMap.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).forEach(entry -> retMap.put(entry.getKey(), entry.getValue()));
         return retMap;
     }
 
