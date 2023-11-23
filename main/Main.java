@@ -386,6 +386,7 @@ public class Main {
             }
         }
         //Clone now holds only valid values
+        Collections.sort(clone, Collections.reverseOrder());
         Map<String, Float> retMap = new LinkedHashMap();//Order is required
         for(Entry i : clone){
             String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label

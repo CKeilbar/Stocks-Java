@@ -3,7 +3,7 @@ package main;
 import java.util.*;
 
 //Entries contain a quantity, price, and an optional map of categorizing tags
-class Entry {
+class Entry implements Comparable<Entry> {
     private float quantity;
     private boolean updatePrice;
     private String ticker;
@@ -56,6 +56,11 @@ class Entry {
 
     public Set<Map.Entry<String, String>> getIterable(){
         return tagMap.entrySet();
+    }
+
+    @Override
+    public int compareTo(Entry other){
+        return Float.compare(this.getValue(), other.getValue());
     }
 
     //The line that gets saved in the file
