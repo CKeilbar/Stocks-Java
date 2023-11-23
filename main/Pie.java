@@ -27,7 +27,7 @@ class Pie extends JComponent{
 
         //Create the list of colours by stepping through the hue
         colourList = new ArrayList(numItems);
-        float step = 0.95f / numItems;
+        float step = 1.0f / numItems;
         float[] baseHSB = Color.RGBtoHSB(55, 148, 187, null);
 
         for(int i = 0; i < numItems; i++){
@@ -56,6 +56,7 @@ class Pie extends JComponent{
         int startAngle = 0;
         int j = 0;
         int size; //The graph is a square
+        float runningTotal = 0f;
 
         //Where to draw the border line from
         int x = area.x;
@@ -82,10 +83,9 @@ class Pie extends JComponent{
 
         //Draw the graph sector by sector
         for(Float i : localMap.values()){
-            int arcAngle = (int) (i * 360 / total);
-            if(j == numItems-1){
-                arcAngle = 360 - startAngle;//Ensures that rounding leaves no gap
-            }
+            runningTotal += i;
+            int stopAngle = Math.round(runningTotal*360/total);
+            int arcAngle = stopAngle-startAngle;
 
             //Fill arc with solid colour
             g.setColor(colourList.get(j));
@@ -93,14 +93,16 @@ class Pie extends JComponent{
 
             //Border
             g.setColor(Color.BLACK);
-            g.drawLine(xOrigin, yOrigin, xOrigin+(int)(0.5*size*Math.cos(Math.toRadians(startAngle))), yOrigin-(int)(0.5*size*Math.sin(Math.toRadians(startAngle))));
-
-            startAngle += arcAngle;
+            if(j != 0){
+                g.drawLine(xOrigin, yOrigin, xOrigin+(int)(0.5*size*Math.cos(Math.toRadians(startAngle))), yOrigin-(int)(0.5*size*Math.sin(Math.toRadians(startAngle))));
+            }
+            startAngle = stopAngle;
             j++;
         }
 
         //Finalize the outline
         g.drawOval(x, y, size, size);
-        g.drawLine(xOrigin, yOrigin, xOrigin+size/2, yOrigin); //Redraw the first line, it gets partially overlapped otherwise
+        if (j != 1)
+            g.drawLine(xOrigin, yOrigin, xOrigin+size/2, yOrigin); //Redraw the first line, it gets partially overlapped otherwise
    }
 }
