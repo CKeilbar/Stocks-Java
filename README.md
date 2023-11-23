@@ -1,7 +1,7 @@
 # Stocks-Java
 A Java Swing GUI program to examine your financial portfolio.
 
-Note that if you want to use automatic prices tickers should be in the format Yahoo Finance Canada expects.
+Note that if you want to use automatic prices tickers should be in the format Yahoo Finance expects.
 
 # Compile
 `javac main/*.java`
