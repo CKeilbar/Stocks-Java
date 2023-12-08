@@ -2,6 +2,8 @@ package main;
 
 import java.util.*;
 import java.io.*;
+import java.time.*;
+import java.time.format.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -13,8 +15,12 @@ public class Main {
     public static ArrayList<Entry> entries = new ArrayList<Entry>();
     private final String saveFname = "prevInfo.txt";
     private TagTracker tagMap = new TagTracker();
+    private final DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
+    private LocalDateTime priceTime;
+    private LocalDateTime dbTime;
 
     //UI Stuff
+    private JLabel dateLabel;
     JFrame frame = new JFrame("Stock Visualizer");
     JPanel addPane = new JPanel(new GridBagLayout());
     JPanel editPane = new JPanel(new GridBagLayout());
@@ -63,6 +69,16 @@ public class Main {
     private void readPrev(){
         try(BufferedReader br = new BufferedReader(new FileReader(saveFname))){
             String line;
+            //First two lines are the last price modification and database modification dates
+            try{
+                line = br.readLine();
+                priceTime = LocalDateTime.parse(line);
+                line = br.readLine();
+                dbTime = LocalDateTime.parse(line);
+            } catch (DateTimeParseException e){
+                priceTime = LocalDateTime.now();
+                dbTime = priceTime;
+            }
             //Entries are in the following format:
             //name, quantity, updatePrice, price, [optional tag 1, optional value 1], ...
             while((line = br.readLine()) != null){
@@ -83,14 +99,33 @@ public class Main {
 
     //Writes to the local file to store our entries for next time
     private void writePrev(){
-        try(FileWriter fw = new FileWriter(saveFname)){
+        try(BufferedWriter bw = new BufferedWriter(new FileWriter(saveFname))){
+            bw.write(priceTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            bw.newLine();
+            bw.write(dbTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            bw.newLine();
             for(Entry i : entries){
-                fw.write(i.saveableLine());
+                bw.write(i.saveableLine());
             }
-        } catch (IOException e){
+        } catch (Exception e){
             //Very bad
         }
     };
+
+    private String datesToLabel(){
+        String startString = "Database last modified ";
+        String dbString = "";
+        String middleString = "; prices last updated ";
+        String priceString = "";
+
+        try {
+            dbString = dbTime.format(dispTimeFormat);
+            priceString = priceTime.format(dispTimeFormat);
+        } catch (DateTimeException e){
+            //Use the default empty strings
+        }
+        return startString + dbString + middleString + priceString;
+    }
 
     //This function must deal with the tag manager and the list of tags
     private void removeEntry(Entry entry){
@@ -219,6 +254,10 @@ public class Main {
         tagScrollPaneC.fill = GridBagConstraints.BOTH;
         addPane.add(tagScrollPane, tagScrollPaneC);
 
+        dateLabel = new JLabel(datesToLabel());
+        GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 7, 1);
+        addPane.add(dateLabel, dateLabelC);
+
         JButton saveButton = new JButton("Create");
         saveButton.addActionListener(e -> {
             //Create/allocate, warn if failure
@@ -278,6 +317,8 @@ public class Main {
                     entries.add(toAdd);
 
                     //Reset fields
+                    dbTime = LocalDateTime.now();
+                    dateLabel.setText(datesToLabel());
                     quantityField.setText("");
                     tickerField.setText("");
                     priceField.setText("");
@@ -301,9 +342,6 @@ public class Main {
 
             JOptionPane.showMessageDialog(frame, msg, (resultPassed ? "Entry creation successful" : "Entry creation unsuccessful"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
         });
-        GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 7, 1);
-        saveButtonC.anchor = GridBagConstraints.SOUTHEAST;
-        addPane.add(saveButton, saveButtonC);
 
         //Button unique to this tab
         JButton updateButton = new JButton("Update all prices");
@@ -341,10 +379,11 @@ public class Main {
                             }
                             JOptionPane.showMessageDialog(frame, msg, (resultPassed ? "Price update successful" : "Price update unsuccessful"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
                         } catch(Exception ex){
-
                             JOptionPane.showMessageDialog(frame, "Reading progress returned an exception.", "Price update unknown", JOptionPane.ERROR_MESSAGE);
                         }
 
+                        priceTime = LocalDateTime.now();
+                        dateLabel.setText(datesToLabel());
                         drawEditPane();
                         progressDialog.dispose();
                     }
@@ -355,9 +394,15 @@ public class Main {
             progressDialog.pack();
             progressDialog.setVisible(true);
         });
-        GridBagConstraints updateButtonC = createGridBagConstraints(0, 1, 7, 1);
-        updateButtonC.anchor = GridBagConstraints.SOUTHWEST;
-        addPane.add(updateButton, updateButtonC);
+        
+        //Panel for the create/update buttons
+        JPanel buttonPanel = new JPanel(new GridLayout(0, 2));
+        buttonPanel.add(updateButton);
+        buttonPanel.add(saveButton);
+
+        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 7, 1);
+        buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
+        addPane.add(buttonPanel, buttonPanelC);
     }
 
     //Searches through the entries to find the ones satisfying the criteria
@@ -566,6 +611,8 @@ public class Main {
             JButton deleteButton = new JButton("Remove");
             deleteButton.addActionListener(e -> {
                 removeEntry(entryToModify);
+                dbTime = LocalDateTime.now();
+                dateLabel.setText(datesToLabel());
                 drawGraphPane();
                 drawEditPane();
             });
@@ -758,6 +805,8 @@ public class Main {
 
                                 entries.add(toAdd);
                                 editFrame.dispose();
+                                dbTime = LocalDateTime.now();
+                                dateLabel.setText(datesToLabel());
                                 drawEditPane();
                                 drawGraphPane();
                             }
