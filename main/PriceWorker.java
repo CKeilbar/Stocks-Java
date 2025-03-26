@@ -5,6 +5,7 @@ import java.util.HashMap;
 import javax.swing.SwingWorker;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -65,7 +66,7 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
         float price = -1f;
 
         try{
-            URL url = new URL("https://ca.finance.yahoo.com/quote/" + ticker);//Tickers should be in this form
+            URL url = URI.create("https://ca.finance.yahoo.com/quote/" + ticker).toURL();//Tickers should be in this form
             URLConnection uc = url.openConnection();
 
             InputStreamReader input = new InputStreamReader(uc.getInputStream());
