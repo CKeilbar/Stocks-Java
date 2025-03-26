@@ -16,8 +16,8 @@ public class Main {
     private final String saveFname = "prevInfo.txt";
     private TagTracker tagMap = new TagTracker();
     private final DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
-    private LocalDateTime priceTime;
-    private LocalDateTime dbTime;
+    private LocalDateTime priceTime = LocalDateTime.now(); //Default to current, overwritten if previous is found
+    private LocalDateTime dbTime = priceTime;
 
     //UI Stuff
     private JLabel dateLabel;
@@ -76,8 +76,7 @@ public class Main {
                 line = br.readLine();
                 dbTime = LocalDateTime.parse(line);
             } catch (DateTimeParseException e){
-                priceTime = LocalDateTime.now();
-                dbTime = priceTime;
+                //Use initialized defaults
             }
             //Entries are in the following format:
             //name, quantity, updatePrice, price, [optional tag 1, optional value 1], ...
