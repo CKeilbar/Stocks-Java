@@ -3,11 +3,8 @@ package main;
 import java.util.ArrayList;
 import java.util.HashMap;
 import javax.swing.SwingWorker;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
+import java.io.*;
+import java.net.*;
 
 
 //Updates the prices
@@ -18,12 +15,20 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
     @Override
     public ArrayList<String> doInBackground(){
         float price;
-        int progress = 0;
+        int progress;
 
         HashMap<String, Float> priceMap = new HashMap<>(32); //Keep track of which tickers we have already updated so we don't search for the price multiple times
         ArrayList<String> failedEntries = new ArrayList<>();
+        String apiKey = Main.apiField.getText();
+        int numEntries = Main.entries.size();
 
-        for(int i = 0; i < Main.entries.size(); i++){
+        //No prices; return done
+        if (numEntries == 0)
+            progress = 1;
+        else
+            progress = 0;
+
+        for(int i = 0; i < numEntries; i++){
             Entry entry = Main.entries.get(i);
             setProgress(progress++);//Increment on each ticker
             if(entry.getUpdatePrice()){
@@ -32,7 +37,7 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
                     entry.setPrice(priceMap.get(ticker));
                 }
                 else{
-                    price = updatePrice(ticker);
+                    price = updatePrice(ticker, apiKey);
                     if(price >= 0f){
                         priceMap.put(ticker, price);
                         entry.setPrice(price);
@@ -54,59 +59,49 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
     }
 
     //Returns the price or something < 0f if there was an error
-    public static float updatePrice(String ticker){
-        //Magic pattern that shows up right before the price
-        //The price will be after the first '>' after this message and before the next '<'
-        String searchTerm = "Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px)";
-        int searchLength = searchTerm.length();
-        int searchIndex = 0;
-
-        boolean foundTerm = false;
+    public static float updatePrice(String ticker, String apiKey){
+        //After 13 commas have been seen we reach the price
+        int skipCommas = 13;
+        int seenCommas = 0;
+        float price = -1f;//Unknown error, probably unreachable
         int readChar;
-        float price = -1f;
 
         try{
-            URL url = URI.create("https://ca.finance.yahoo.com/quote/" + ticker).toURL();//Tickers should be in this form
+            //Almost all of these lines can fail
+            URI uri = URI.create("https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol="+ticker+"&apikey="+apiKey+"&datatype=csv");
+            URL url = uri.toURL();
             URLConnection uc = url.openConnection();
+            InputStream is = uc.getInputStream();
+            InputStreamReader ir = new InputStreamReader(is);
 
-            InputStreamReader input = new InputStreamReader(uc.getInputStream());
-            BufferedReader in = new BufferedReader(input);
-
-            //Search through one byte at a time for our magic pattern
-            while((readChar = in.read()) != -1){
-                if(readChar == searchTerm.charAt(searchIndex)){
-                    if(++searchIndex == searchLength){
-                        foundTerm = true;
-                        break;
+            try(BufferedReader in = new BufferedReader(ir)){
+                //Search through one byte at a time counting commas
+                while((readChar = in.read()) != -1){
+                    if(readChar == ','){
+                        if(++seenCommas == skipCommas)
+                            break;
                     }
                 }
-                else{//Need to check if this character is the start of the search
-                    searchIndex = 0;
-                    if(readChar == searchTerm.charAt(searchIndex)){
-                        searchIndex++;
-                    }
-                }
-            }
 
-            if(foundTerm){
                 String stringPrice = "";
-
-                while((readChar = in.read()) != '>'){}//Fast forward to the start of the price
-
-                while((readChar = in.read()) != '<'){//Read until the price is gobbled up
+                while(true){
+                    readChar = in.read();
+                    if (readChar == -1 || readChar == ',')
+                        break;
                     stringPrice += (char) readChar;
                 }
-
                 price = Float.parseFloat(stringPrice);
+
+            } catch(NumberFormatException unused){
+                return -2f;//Could not find a valid price
+            } catch(Exception unused){
+                return -3f;//I/O error
             }
-
-            in.close();
-
-        } catch(Exception ex){//Something somewhere went wrong, cannot recover.
-            return -1f;//Could be bad ticker, no internet, Yahoo changed their page
+        } catch(Exception unused){
+            return -4f;//Could be no internet, they changed their query format, or any number of other things
         }
 
-        return foundTerm ? price : -2f;
+        return price;
     };
 
 }

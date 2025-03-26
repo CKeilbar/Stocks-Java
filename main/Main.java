@@ -18,6 +18,7 @@ public class Main {
     private final DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
     private LocalDateTime priceTime = LocalDateTime.now(); //Default to current, overwritten if previous is found
     private LocalDateTime dbTime = priceTime;
+    private String prevApiKey = "";
 
     //UI Stuff
     private JLabel dateLabel;
@@ -25,6 +26,8 @@ public class Main {
     JPanel addPane = new JPanel(new GridBagLayout());
     JPanel editPane = new JPanel(new GridBagLayout());
     JPanel graphPane = new JPanel(new GridBagLayout());
+    JPanel cfgPane = new JPanel(new GridBagLayout());
+    static JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
     JTabbedPane mainPane = new JTabbedPane();
 
     public static void main(String[] args) {
@@ -37,11 +40,11 @@ public class Main {
 
         /*try{//Windows does not respect setting the button colour
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch(Exception e){}//Too bad, default look it is*/
+        } catch(Exception unused){}//Too bad, default look it is*/
 
         try{
             frame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
-        } catch(Exception e){}//Too bad, no icon
+        } catch(Exception unused){}//Too bad, no icon
 
         //Save before exit
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -55,10 +58,12 @@ public class Main {
         drawAddPane();
         drawEditPane();
         drawGraphPane();
+        drawCfgPane();
 
         mainPane.addTab("Add items", addPane);
         mainPane.addTab("Edit items", editPane);
         mainPane.addTab("Graph items", graphPane);
+        mainPane.addTab("Config", cfgPane);
 
         frame.add(mainPane);
         frame.pack();//Automatically sets the size, probably not optimal...
@@ -69,13 +74,15 @@ public class Main {
     private void readPrev(){
         try(BufferedReader br = new BufferedReader(new FileReader(saveFname))){
             String line;
-            //First two lines are the last price modification and database modification dates
+            //First line is the saved API key
+            prevApiKey = br.readLine();
+            //Next two lines are the last price modification and database modification dates
             try{
                 line = br.readLine();
                 priceTime = LocalDateTime.parse(line);
                 line = br.readLine();
                 dbTime = LocalDateTime.parse(line);
-            } catch (DateTimeParseException e){
+            } catch (DateTimeParseException unused){
                 //Use initialized defaults
             }
             //Entries are in the following format:
@@ -91,7 +98,7 @@ public class Main {
                 entries.add(currentEntry);
             }
 
-        } catch (IOException e){
+        } catch (IOException unused){
             //Very bad
         }
     };
@@ -99,6 +106,8 @@ public class Main {
     //Writes to the local file to store our entries for next time
     private void writePrev(){
         try(BufferedWriter bw = new BufferedWriter(new FileWriter(saveFname))){
+            bw.write(apiField.getText());
+            bw.newLine();
             bw.write(priceTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             bw.newLine();
             bw.write(dbTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -106,7 +115,7 @@ public class Main {
             for(Entry i : entries){
                 bw.write(i.saveableLine());
             }
-        } catch (Exception e){
+        } catch (Exception unused){
             //Very bad
         }
     };
@@ -120,7 +129,7 @@ public class Main {
         try {
             dbString = dbTime.format(dispTimeFormat);
             priceString = priceTime.format(dispTimeFormat);
-        } catch (DateTimeException e){
+        } catch (DateTimeException unused){
             //Use the default empty strings
         }
         return startString + dbString + middleString + priceString;
@@ -267,7 +276,7 @@ public class Main {
             String quantityText = quantityField.getText();
             try{
                 quantity = Float.parseFloat(quantityText);
-            } catch(NumberFormatException ex){
+            } catch(NumberFormatException unused){
                 msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
                 resultPassed = false;
             }
@@ -279,15 +288,15 @@ public class Main {
                 if(!willUpdatePrice){
                     try{
                         price = Float.parseFloat(priceText);
-                    } catch(NumberFormatException ex){
+                    } catch(NumberFormatException unused){
                         msg = "Could not interpret the price field (" + priceText + ") as text.";
                         resultPassed = false;
                     }
                 }
                 else{
-                    price = PriceWorker.updatePrice(tickerText);
-                    if(price == -1f){
-                        msg = "Could not find a price for the ticker (" + tickerText + ").";
+                    price = PriceWorker.updatePrice(tickerText, apiField.getText());
+                    if(price < 0f){
+                        msg = "Could not find a price for the ticker " + tickerText + ".";
                         resultPassed = false;
                     }
                 }
@@ -348,7 +357,7 @@ public class Main {
             //Blocks others
             JDialog progressDialog = new JDialog(frame, "Updating prices...", Dialog.ModalityType.APPLICATION_MODAL);
 
-            JProgressBar progressBar = new JProgressBar(0, entries.size());
+            JProgressBar progressBar = new JProgressBar(0, Math.max(entries.size(), 1));
             progressBar.setValue(0);
             progressBar.setString("Initializing");
             progressBar.setStringPainted(true);
@@ -361,7 +370,7 @@ public class Main {
                     }
                     int progress = (Integer) evt.getNewValue();
                     progressBar.setValue(progress);
-                    if(progress != entries.size()){
+                    if(progress < entries.size()){
                         progressBar.setString(entries.get(progress).getTicker());
                     }
                     else{
@@ -377,7 +386,7 @@ public class Main {
                                 msg = "The following tickers failed to update: " + String.join(", ", result);
                             }
                             JOptionPane.showMessageDialog(frame, msg, (resultPassed ? "Price update successful" : "Price update unsuccessful"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
-                        } catch(Exception ex){
+                        } catch(Exception unused){
                             JOptionPane.showMessageDialog(frame, "Reading progress returned an exception.", "Price update unknown", JOptionPane.ERROR_MESSAGE);
                         }
 
@@ -393,7 +402,7 @@ public class Main {
             progressDialog.pack();
             progressDialog.setVisible(true);
         });
-        
+
         //Panel for the create/update buttons
         JPanel buttonPanel = new JPanel(new GridLayout(0, 2));
         buttonPanel.add(updateButton);
@@ -493,7 +502,7 @@ public class Main {
                 JFrame graphFrame = new JFrame("Pie graph");
                 try{
                     graphFrame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
-                } catch(Exception ex){}//Too bad, no icon
+                } catch(Exception unused){}//Too bad, no icon
 
                 graphFrame.setPreferredSize(new Dimension(600, 600));
 
@@ -628,7 +637,7 @@ public class Main {
                     JFrame editFrame = new JFrame("Edit entry");
                     try{
                         editFrame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
-                    } catch(Exception ex){}//Too bad, no icon
+                    } catch(Exception unused){}//Too bad, no icon
 
                     JPanel editPanel2 = new JPanel(new GridBagLayout());
                     JLabel tickerLabel = new JLabel("Name/Ticker");
@@ -763,7 +772,7 @@ public class Main {
                             String quantityText = quantityField.getText();
                             try{
                                 quantity = Float.parseFloat(quantityText);
-                            } catch(NumberFormatException ex){
+                            } catch(NumberFormatException unused){
                                 msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
                                 resultPassed = false;
                             }
@@ -773,7 +782,7 @@ public class Main {
                             String tickerText = tickerField.getText();
                             try{
                                 price = Float.parseFloat(priceText);
-                            } catch(NumberFormatException ex){
+                            } catch(NumberFormatException unused){
                                 msg = "Could not interpret the price field (" + priceText + ") as text.";
                                 resultPassed = false;
                             }
@@ -852,5 +861,44 @@ public class Main {
         editPane.add(editScrollPane, editScrollPaneC);
 
     };
+
+    //Basically the exact same as the edit pane, they should be merged in the future
+    private void drawCfgPane(){
+        cfgPane.removeAll();
+
+        JLabel apiLabel = new JLabel("Alpha Vantage API Key");
+        GridBagConstraints apiLabelC = createGridBagConstraints(0, 1, 0, 1);
+        cfgPane.add(apiLabel, apiLabelC);
+
+        apiField.setText(prevApiKey);
+        GridBagConstraints apiFieldC = createGridBagConstraints(1, 1, 0, 1);
+        cfgPane.add(apiField, apiFieldC);
+    };
+
+    //Draws the pane used for graphing in addition to the one that holds the graph
+    /*private void drawGraphPane(){
+        graphPane.removeAll();
+
+        JPanel graphPaneTag = new JPanel(new GridLayout(0, tagMap.maxValsForTag() + 1));
+
+        JScrollPane graphScrollPane = new JScrollPane(graphPaneTag);
+        GridBagConstraints graphScrollPaneC = createGridBagConstraints(0, 2, 0, 1);
+        graphScrollPaneC.weightx = 0.5;
+        graphScrollPaneC.weighty = 0.5;
+        graphScrollPaneC.fill = GridBagConstraints.BOTH;
+        graphPane.add(graphScrollPane, graphScrollPaneC);
+
+        GridBagConstraints graphButtonC = createGridBagConstraints(1, 1, 1, 1);
+        graphButtonC.anchor = GridBagConstraints.SOUTHEAST;
+        graphPane.add(graphButton, graphButtonC);
+
+        JLabel instructionsLabel = new JLabel("Use the left column to select the tag that is displayed on the graph. Use the other columns to filter out entries.");
+        GridBagConstraints instructionsLabelC = createGridBagConstraints(0, 1, 1, 1);
+        instructionsLabelC.anchor = GridBagConstraints.SOUTHWEST;
+        instructionsLabelC.weightx = 0.5;
+        graphPane.add(instructionsLabel, instructionsLabelC);
+*/
+
+
 }
 
