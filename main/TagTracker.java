@@ -9,7 +9,7 @@ class TagTracker {
     //The key is the tag name, the value is a map holding the value and the number of times that value is present
 
     public TagTracker(){
-        tagCount = new HashMap();
+        tagCount = new HashMap<>();
     }
 
     //Call whenever an entry is created for each of the different tags
@@ -20,7 +20,7 @@ class TagTracker {
             thisTag.put(value, valueToAdd + 1);
         }
         else{//Add a new map for this new key
-            Map<String, Integer> toInsert = new HashMap();
+            Map<String, Integer> toInsert = new HashMap<>();
             toInsert.put(value, 1);
             tagCount.put(tag, toInsert);
         }

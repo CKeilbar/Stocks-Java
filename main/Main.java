@@ -196,7 +196,7 @@ public class Main {
         tagsPane.add(new JLabel("Tag"));
         tagsPane.add(new JLabel("Value"));
 
-        ArrayList<JComboBox> boxes = new ArrayList();
+        ArrayList<JComboBox> boxes = new ArrayList<>();
 
         //This button adds a new row for a new tag and value
         JButton addItemButton = new JButton("+");
@@ -430,13 +430,13 @@ public class Main {
             }
         }
         //Clone now holds only valid values
-        Map<String, Float> unsortedMap = new HashMap();
+        Map<String, Float> unsortedMap = new HashMap<>();
         for(Entry i : clone){
             String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
             unsortedMap.put(myTag, i.getValue() + unsortedMap.getOrDefault(myTag, 0f));
         }
 
-        Map<String, Float> retMap = new LinkedHashMap();//Order is required
+        Map<String, Float> retMap = new LinkedHashMap<>();//Order is required
         //Sort by value
         unsortedMap.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).forEach(entry -> retMap.put(entry.getKey(), entry.getValue()));
         return retMap;
@@ -460,10 +460,10 @@ public class Main {
         //Launch the graph
         graphButton.addActionListener(e -> {
             int length = tagMap.maxValsForTag()+1;
-            ArrayList<String> includeValues = new ArrayList();
-            ArrayList<String> includeValueTags = new ArrayList();
-            ArrayList<String> removeValues = new ArrayList();
-            ArrayList<String> removeValueTags = new ArrayList();
+            ArrayList<String> includeValues = new ArrayList<>();
+            ArrayList<String> includeValueTags = new ArrayList<>();
+            ArrayList<String> removeValues = new ArrayList<>();
+            ArrayList<String> removeValueTags = new ArrayList<>();
             String axisTag = "";
 
             //Look at the buttons to see what has been selected
@@ -682,7 +682,7 @@ public class Main {
                     tagsPane.add(new JLabel("Tag"));
                     tagsPane.add(new JLabel("Value"));
 
-                    ArrayList<JComboBox> boxes = new ArrayList();
+                    ArrayList<JComboBox> boxes = new ArrayList<>();
 
                     JButton addItemButton = new JButton("+");
                     addItemButton.addActionListener(new ActionListener(){

@@ -19,8 +19,8 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
         float price;
         int progress = 0;
 
-        HashMap<String, Float> priceMap = new HashMap(32); //Keep track of which tickers we have already updated so we don't search for the price multiple times
-        ArrayList<String> failedEntries = new ArrayList();
+        HashMap<String, Float> priceMap = new HashMap<>(32); //Keep track of which tickers we have already updated so we don't search for the price multiple times
+        ArrayList<String> failedEntries = new ArrayList<>();
 
         for(int i = 0; i < Main.entries.size(); i++){
             Entry entry = Main.entries.get(i);

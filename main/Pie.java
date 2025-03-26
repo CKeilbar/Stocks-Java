@@ -26,7 +26,7 @@ class Pie extends JComponent{
         }
 
         //Create the list of colours by stepping through the hue
-        colourList = new ArrayList(numItems);
+        colourList = new ArrayList<>(numItems);
         float step = 1.0f / numItems;
         float[] baseHSB = Color.RGBtoHSB(55, 148, 187, null);
 

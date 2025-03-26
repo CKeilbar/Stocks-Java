@@ -15,7 +15,7 @@ class Entry {
         quantity = Quantity;
         updatePrice = UpdatePrice;
         price = Price;
-        tagMap = new HashMap(32);
+        tagMap = new HashMap<>(32);
     }
 
     public float getValue(){
