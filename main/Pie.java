@@ -82,7 +82,7 @@ class Pie extends JComponent{
         //Draw the graph sector by sector
         for(Float i : localMap.values()){
             runningTotal += i;
-            int stopAngle = Math.round(runningTotal*360/total);
+            int stopAngle = Math.round(runningTotal*360f/total);
             int arcAngle = stopAngle-startAngle;
 
             //Fill arc with solid colour

@@ -338,16 +338,17 @@ public class Main {
 
                 JPanel piePane = new JPanel(new GridBagLayout());
 
-                JLabel graphTitle = new JLabel(axisTag);
-                GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
-                piePane.add(graphTitle, graphTitleC);
-
                 Pie myPie = new Pie(graphable);
                 GridBagConstraints myPieC = createGridBagConstraints(0, 1, 1, 1);
                 myPieC.fill = GridBagConstraints.BOTH;
                 myPieC.weightx = 0.5;
                 myPieC.weighty = 0.9;
                 piePane.add(myPie, myPieC);
+
+                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal()));
+                GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
+                piePane.add(graphTitle, graphTitleC);
+
 
                 JPanel legendPanel = new JPanel();
                 GridBagConstraints legendPanelC = createGridBagConstraints(0, 1, 2, 1);
@@ -359,7 +360,7 @@ public class Main {
                 ArrayList<Color> colourList = myPie.getColours();
                 float total = myPie.getTotal();
                 graphable.forEach((k, v) -> {
-                    JLabel legendLabel = new JLabel(String.format("%s $%.2f %.0f%% ", k, v, v/total*100f));
+                    JLabel legendLabel = new JLabel(String.format("%s $%,.2f %.0f%% ", k, v, v/total*100f));
                     legendLabel.setForeground(colourList.get(j[0]));
                     legendPanel.add(legendLabel);
                     j[0]++;
