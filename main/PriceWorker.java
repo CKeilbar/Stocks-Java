@@ -11,6 +11,14 @@ import java.net.*;
 //Can either run in a background thread or not
 public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
 
+    String apiKey;
+    ArrayList<Entry> entries;
+
+    public PriceWorker(String apiKey, ArrayList<Entry> entries){
+        this.apiKey = apiKey;
+        this.entries = entries;
+    }
+
     //Updates the prices in the main entries and returns an array containing tickers that had issues
     @Override
     public ArrayList<String> doInBackground(){
@@ -19,8 +27,7 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
 
         HashMap<String, Float> priceMap = new HashMap<>(32); //Keep track of which tickers we have already updated so we don't search for the price multiple times
         ArrayList<String> failedEntries = new ArrayList<>();
-        String apiKey = Main.apiField.getText();
-        int numEntries = Main.entries.size();
+        int numEntries = entries.size();
 
         //No prices; return done
         if (numEntries == 0)
@@ -29,7 +36,7 @@ public class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
             progress = 0;
 
         for(int i = 0; i < numEntries; i++){
-            Entry entry = Main.entries.get(i);
+            Entry entry = entries.get(i);
             setProgress(progress++);//Increment on each ticker
             if(entry.getUpdatePrice()){
                 String ticker = entry.getTicker();

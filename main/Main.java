@@ -12,23 +12,24 @@ import javax.imageio.ImageIO;
 
 public class Main {
 
-    public static ArrayList<Entry> entries = new ArrayList<Entry>();
+    //Save file
     private final String saveFname = "prevInfo.txt";
+
+    //Database information
+    private ArrayList<Entry> entries = new ArrayList<Entry>();
     private TagTracker tagMap = new TagTracker();
-    private final DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
+    
+    //Shared variables
     private LocalDateTime priceTime = LocalDateTime.now(); //Default to current, overwritten if previous is found
     private LocalDateTime dbTime = priceTime;
     private String prevApiKey = "";
 
     //UI Stuff
     private JLabel dateLabel;
-    JFrame frame = new JFrame("Stock Visualizer");
-    EditPanel editPanel;
-    JPanel editPane = new JPanel(new GridBagLayout());
-    JPanel graphPane = new JPanel(new GridBagLayout());
-    JPanel cfgPane = new JPanel(new GridBagLayout());
-    static JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
-    JTabbedPane mainPane = new JTabbedPane();
+    private JFrame frame = new JFrame("Stock Visualizer");
+    private JPanel viewPane = new JPanel(new GridBagLayout());
+    private JPanel graphPane = new JPanel(new GridBagLayout());
+    private JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
 
     public static void main(String[] args) {
         Main tempMain = new Main();
@@ -55,15 +56,14 @@ public class Main {
         });
 
         //Set up UI
-        drawAddPane();
-        drawEditPane();
+        drawViewPane();
         drawGraphPane();
-        drawCfgPane();
 
-        mainPane.addTab("Add items", editPanel);
-        mainPane.addTab("Edit items", editPane);
+        JTabbedPane mainPane = new JTabbedPane();
+        mainPane.addTab("Add items", createAddPane());
+        mainPane.addTab("Edit items", viewPane);
         mainPane.addTab("Graph items", graphPane);
-        mainPane.addTab("Config", cfgPane);
+        mainPane.addTab("Config", createCfgPane());
 
         frame.add(mainPane);
         frame.pack();//Automatically sets the size, probably not optimal...
@@ -118,7 +118,9 @@ public class Main {
         }
     };
 
+    //Returns the timestamps formatted as text
     private String datesToLabel(){
+        DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
         String startString = "Database last modified ";
         String dbString = "";
         String middleString = "; prices last updated ";
@@ -155,17 +157,17 @@ public class Main {
     };
 
     //This panel is used to create new entries
-    private void drawAddPane(){
+    private JPanel createAddPane(){
         
-        editPanel = new EditPanel(frame, tagMap);
+        EditPanel createPane = new EditPanel(frame, tagMap);
 
         dateLabel = new JLabel(datesToLabel());
         GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 7, 1);
-        editPanel.add(dateLabel, dateLabelC);
+        createPane.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
         saveButton.addActionListener(e -> {
-            Entry created = editPanel.tryConstruct(apiField.getText(), false);
+            Entry created = createPane.tryConstruct(apiField.getText(), false);
             if (created != null){
                 createEntry(created);
 
@@ -176,7 +178,7 @@ public class Main {
                 frame.getContentPane().repaint();
                 //Both other panes need to be redrawn
                 drawGraphPane();
-                drawEditPane();
+                drawViewPane();
             }
         });
 
@@ -191,7 +193,7 @@ public class Main {
             progressBar.setString("Initializing");
             progressBar.setStringPainted(true);
 
-            PriceWorker priceWorker = new PriceWorker();
+            PriceWorker priceWorker = new PriceWorker(apiField.getText(), entries);
             priceWorker.addPropertyChangeListener(new PropertyChangeListener(){
                 public void propertyChange(PropertyChangeEvent evt){
                     if(evt.getPropertyName() != "progress"){
@@ -221,7 +223,7 @@ public class Main {
 
                         priceTime = LocalDateTime.now();
                         dateLabel.setText(datesToLabel());
-                        drawEditPane();
+                        drawViewPane();
                         progressDialog.dispose();
                     }
                 };
@@ -239,7 +241,9 @@ public class Main {
 
         GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 7, 1);
         buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
-        editPanel.add(buttonPanel, buttonPanelC);
+        createPane.add(buttonPanel, buttonPanelC);
+
+        return createPane;
     }
 
     //Searches through the entries to find the ones satisfying the criteria
@@ -437,10 +441,10 @@ public class Main {
         }
     };
 
-    //Basically the exact same as the edit pane, they should be merged in the future
-    private void drawEditPane(){
-        editPane.removeAll();
-        JPanel editTagPane = new JPanel(new GridBagLayout());
+    //Lists the current entries and provides buttons to remove or modify them
+    private void drawViewPane(){
+        viewPane.removeAll();
+        JPanel viewTagPane = new JPanel(new GridBagLayout());
         int numRows = entries.size();
         for(int i = 0; i < numRows; i++){
             Entry entryToModify = entries.get(i);
@@ -451,13 +455,13 @@ public class Main {
                 dbTime = LocalDateTime.now();
                 dateLabel.setText(datesToLabel());
                 drawGraphPane();
-                drawEditPane();
+                drawViewPane();
             });
 
             GridBagConstraints deleteButtonC = createGridBagConstraints(0, 1, i, 1);
             deleteButtonC.fill = GridBagConstraints.HORIZONTAL;
             deleteButtonC.weightx = 0.1;
-            editTagPane.add(deleteButton, deleteButtonC);
+            viewTagPane.add(deleteButton, deleteButtonC);
 
             JButton modifyButton = new JButton("Modify");
             modifyButton.addActionListener(new ActionListener(){
@@ -481,7 +485,7 @@ public class Main {
                                 editFrame.dispose();
                                 dbTime = LocalDateTime.now();
                                 dateLabel.setText(datesToLabel());
-                                drawEditPane();
+                                drawViewPane();
                                 drawGraphPane();
                             }
                         };
@@ -507,27 +511,27 @@ public class Main {
             GridBagConstraints modifyButtonC = createGridBagConstraints(1, 1, i, 1);
             modifyButtonC.fill = GridBagConstraints.HORIZONTAL;
             modifyButtonC.weightx = 0.1;
-            editTagPane.add(modifyButton, modifyButtonC);
+            viewTagPane.add(modifyButton, modifyButtonC);
 
             JLabel descriptionLabel = new JLabel(entries.get(i).displayLine());
             GridBagConstraints descriptionLabelC = createGridBagConstraints(2, 1, i, 1);
             descriptionLabelC.weightx = 0.9;
             descriptionLabelC.fill = GridBagConstraints.HORIZONTAL;
             descriptionLabelC.insets = new Insets(5, 5, 5, 5);
-            editTagPane.add(descriptionLabel, descriptionLabelC);
+            viewTagPane.add(descriptionLabel, descriptionLabelC);
         }
 
-        JScrollPane editScrollPane = new JScrollPane(editTagPane);
-        GridBagConstraints editScrollPaneC = createGridBagConstraints(0, 1, 0, 1);
-        editScrollPaneC.weightx = 0.5;
-        editScrollPaneC.weighty = 0.5;
-        editScrollPaneC.fill = GridBagConstraints.BOTH;
-        editPane.add(editScrollPane, editScrollPaneC);
+        JScrollPane viewScrollPane = new JScrollPane(viewTagPane);
+        GridBagConstraints viewScrollPaneC = createGridBagConstraints(0, 1, 0, 1);
+        viewScrollPaneC.weightx = 0.5;
+        viewScrollPaneC.weighty = 0.5;
+        viewScrollPaneC.fill = GridBagConstraints.BOTH;
+        viewPane.add(viewScrollPane, viewScrollPaneC);
     };
 
     //Only holds the API key at present
-    private void drawCfgPane(){
-        cfgPane.removeAll();
+    private JPanel createCfgPane(){
+        JPanel cfgPane = new JPanel(new GridBagLayout());
 
         JLabel apiLabel = new JLabel("Alpha Vantage API Key");
         GridBagConstraints apiLabelC = createGridBagConstraints(0, 1, 0, 1);
@@ -536,6 +540,8 @@ public class Main {
         apiField.setText(prevApiKey);
         GridBagConstraints apiFieldC = createGridBagConstraints(1, 1, 0, 1);
         cfgPane.add(apiField, apiFieldC);
+
+        return cfgPane;
     };
 
 }
