@@ -240,6 +240,9 @@ class EditPanel extends JPanel {
             else{
                 msg = "The entry was modified successfully.";
             }
+            if(willUpdatePrice){
+                msg += String.format("\nFound a price of %.2f.", price);
+            }
         }
 
         JOptionPane.showMessageDialog(parentFrame, msg, (resultPassed ? "Operation successful" : "Operation failed"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
