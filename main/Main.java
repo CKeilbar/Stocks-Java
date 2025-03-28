@@ -85,15 +85,12 @@ public class Main {
             } catch (DateTimeParseException unused){
                 //Use initialized defaults
             }
-            //Entries are in the following format:
-            //name, quantity, updatePrice, price, [optional tag 1, optional value 1], ...
+            //Rest of the lines correspond to entries
             while((line = br.readLine()) != null){
-                String[] splitLine = line.split(",");
-                Entry currentEntry = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
-                for(int i = 4; i < splitLine.length; i += 2){
-                    currentEntry.addValue(splitLine[i], splitLine[i+1]);
+                Entry currentEntry = Entry.fromString(line);
+                if (currentEntry != null){
+                    createEntry(currentEntry);
                 }
-                createEntry(currentEntry);
             }
 
         } catch (IOException unused){
@@ -111,7 +108,7 @@ public class Main {
             bw.write(dbTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             bw.newLine();
             for(Entry i : entries){
-                bw.write(i.saveableLine());
+                bw.write(i.toString());
             }
         } catch (Exception unused){
             //Very bad

@@ -18,6 +18,22 @@ class Entry {
         tagMap = new HashMap<>(32);
     }
 
+    //Opposite of toString()
+    public static Entry fromString(String line){
+        Entry retVal;
+        try{
+            String[] splitLine = line.split(",");
+            retVal = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
+            for(int i = 4; i < splitLine.length; i += 2){
+                retVal.addValue(splitLine[i], splitLine[i+1]);
+            }
+        } catch(Exception unused){//Something went wrong while parsing the string, don't complete the construction
+            retVal = null;
+        }
+
+        return retVal;
+    }
+
     public float getValue(){
         return price * quantity;
     };
@@ -59,7 +75,8 @@ class Entry {
     }
 
     //The line that gets saved in the file
-    public String saveableLine(){
+    @Override
+    public String toString(){
         String essentials = String.join(",", ticker, Float.toString(quantity), (updatePrice ? "yes" : "no"), Float.toString(price));
         String tags = System.lineSeparator();
         for(Map.Entry<String, String> i : tagMap.entrySet()){
