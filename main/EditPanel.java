@@ -14,14 +14,12 @@ class EditPanel extends JPanel {
     private JCheckBox updateBox;
     private JTextField priceField;
     private JPanel tagsPane;
-    private ArrayList<JComboBox> boxes;
-    private TagTracker tagTracker;
+    private ArrayList<JComboBox<String>> boxes;
     private JFrame parentFrame;
 
     //Create panel and prepopulate fields
     public EditPanel(JFrame parentFrame, TagTracker tagTracker, Entry entry) {
         setLayout(new GridBagLayout());
-        this.tagTracker = tagTracker;
         this.parentFrame = parentFrame;
 
         //Name
@@ -229,8 +227,8 @@ class EditPanel extends JPanel {
                     updateBox.doClick();
                 }
                 for(Component i : tagsPane.getComponents()){
-                    if(i instanceof JComboBox){
-                        tagsPane.remove((JComboBox) i);
+                    if(i instanceof JComboBox<?>){
+                        tagsPane.remove((JComboBox<?>) i);
                     }
                 }
                 boxes.clear();

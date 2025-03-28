@@ -46,7 +46,7 @@ class TagTracker {
                 thisTag.put(value, count - 1);
             }
             if(thisTag.isEmpty()){//No more entries contain this tag
-                tagCount.remove(thisTag);
+                tagCount.remove(tag);
             }
         }
     };

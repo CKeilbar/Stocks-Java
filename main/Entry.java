@@ -10,12 +10,12 @@ class Entry {
     private float price;
     private Map<String, String> tagMap;
 
-    public Entry(String Ticker, float Quantity, boolean UpdatePrice, float Price){
-        ticker = Ticker;
-        quantity = Quantity;
-        updatePrice = UpdatePrice;
-        price = Price;
-        tagMap = new HashMap<>(32);
+    public Entry(String ticker, float quantity, boolean updatePrice, float price){
+        this.ticker = ticker;
+        this.quantity = quantity;
+        this.updatePrice = updatePrice;
+        this.price = price;
+        this.tagMap = new HashMap<>(32);
     }
 
     //Opposite of toString()

@@ -3,8 +3,6 @@ package main;
 import java.util.*;
 import java.awt.*;
 import javax.swing.JComponent;
-import javax.swing.JFrame;
-import java.lang.Math.*;
 
 //This a resizable component that displays a pie graph of the input map
 class Pie extends JComponent{

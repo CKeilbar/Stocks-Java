@@ -32,7 +32,7 @@ public class Main {
     private JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
 
     public static void main(String[] args) {
-        Main tempMain = new Main();
+        new Main();
     }
 
     //Initializes the UI
