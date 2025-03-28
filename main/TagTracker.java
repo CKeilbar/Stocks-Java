@@ -12,32 +12,42 @@ class TagTracker {
         tagCount = new HashMap<>();
     }
 
-    //Call whenever an entry is created for each of the different tags
-    public void addEntry(String tag, String value){
-        if(tagCount.containsKey(tag)){//Update the count for this entry
-            Map<String, Integer> thisTag = tagCount.get(tag);
-            int valueToAdd = thisTag.getOrDefault(value, 0);
-            thisTag.put(value, valueToAdd + 1);
-        }
-        else{//Add a new map for this new key
-            Map<String, Integer> toInsert = new HashMap<>();
-            toInsert.put(value, 1);
-            tagCount.put(tag, toInsert);
+    //Call to add the set of tags
+    public void addEntry(Set<Map.Entry<String, String>> tags){
+        for(Map.Entry<String, String> i : tags){
+            String tag = i.getKey();
+            String value = i.getValue();
+            
+            if(tagCount.containsKey(tag)){//Update the count for this entry
+                Map<String, Integer> thisTag = tagCount.get(tag);
+                int valueToAdd = thisTag.getOrDefault(value, 0);
+                thisTag.put(value, valueToAdd + 1);
+            }
+            else{//Add a new map for this new key
+                Map<String, Integer> toInsert = new HashMap<>();
+                toInsert.put(value, 1);
+                tagCount.put(tag, toInsert);
+            }
         }
     };
 
-    //Call for each tag on an entry when it is removed
-    public void removeEntry(String tag, String value){
-        Map<String, Integer> thisTag = tagCount.get(tag);
-        int count = thisTag.get(value);
-        if(count == 1){//Last instance of this value, remove the whole map
-            thisTag.remove(value);
-        }
-        else{
-            thisTag.put(value, count - 1);
-        }
-        if(thisTag.isEmpty()){//No more entries contain this tag
-            tagCount.remove(thisTag);
+    //Call to remove the set of tags
+    public void removeEntry(Set<Map.Entry<String, String>> tags){
+        for(Map.Entry<String, String> i : tags){
+            String tag = i.getKey();
+            String value = i.getValue();
+            
+            Map<String, Integer> thisTag = tagCount.get(tag);
+            int count = thisTag.get(value);
+            if(count == 1){//Last instance of this value, remove the whole map
+                thisTag.remove(value);
+            }
+            else{
+                thisTag.put(value, count - 1);
+            }
+            if(thisTag.isEmpty()){//No more entries contain this tag
+                tagCount.remove(thisTag);
+            }
         }
     };
 

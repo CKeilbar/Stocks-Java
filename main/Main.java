@@ -23,7 +23,7 @@ public class Main {
     //UI Stuff
     private JLabel dateLabel;
     JFrame frame = new JFrame("Stock Visualizer");
-    JPanel addPane = new JPanel(new GridBagLayout());
+    EditPanel editPanel;
     JPanel editPane = new JPanel(new GridBagLayout());
     JPanel graphPane = new JPanel(new GridBagLayout());
     JPanel cfgPane = new JPanel(new GridBagLayout());
@@ -60,7 +60,7 @@ public class Main {
         drawGraphPane();
         drawCfgPane();
 
-        mainPane.addTab("Add items", addPane);
+        mainPane.addTab("Add items", editPanel);
         mainPane.addTab("Edit items", editPane);
         mainPane.addTab("Graph items", graphPane);
         mainPane.addTab("Config", cfgPane);
@@ -92,10 +92,8 @@ public class Main {
                 Entry currentEntry = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
                 for(int i = 4; i < splitLine.length; i += 2){
                     currentEntry.addValue(splitLine[i], splitLine[i+1]);
-                    tagMap.addEntry(splitLine[i], splitLine[i+1]);
-
                 }
-                entries.add(currentEntry);
+                createEntry(currentEntry);
             }
 
         } catch (IOException unused){
@@ -135,18 +133,19 @@ public class Main {
         return startString + dbString + middleString + priceString;
     }
 
-    //This function must deal with the tag manager and the list of tags
+    //These functions deal with the tag manager as well as the list
     private void removeEntry(Entry entry){
         entries.remove(entry);
-        Set<Map.Entry<String, String>> tags = entry.getIterable();
-        for(Map.Entry<String, String> i : tags){
-            tagMap.removeEntry(i.getKey(), i.getValue());
-        }
+        tagMap.removeEntry(entry.getIterable());
+    }
+    private void createEntry(Entry entry){
+        entries.add(entry);
+        tagMap.addEntry(entry.getIterable());
     }
 
     //Convenience method for creating the constraints
     //Aditional manual configuration will be optionally needed to set the weights
-    private GridBagConstraints createGridBagConstraints(int xLoc, int xWidth, int yLoc, int yHeight){
+    public static GridBagConstraints createGridBagConstraints(int xLoc, int xWidth, int yLoc, int yHeight){
         GridBagConstraints returnable = new GridBagConstraints();
         returnable.gridx = xLoc;
         returnable.gridwidth = xWidth;
@@ -157,198 +156,28 @@ public class Main {
 
     //This panel is used to create new entries
     private void drawAddPane(){
-        JLabel tickerLabel = new JLabel("Name/Ticker");
-        GridBagConstraints tickerLabelC = createGridBagConstraints(0, 1, 0, 1);
-        addPane.add(tickerLabel, tickerLabelC);
-
-        JTextField tickerField = new JTextField("");
-        GridBagConstraints tickerFieldC = createGridBagConstraints(1, 1, 0, 1);
-        tickerFieldC.weightx = 0.5;
-        tickerFieldC.fill = GridBagConstraints.HORIZONTAL;
-        tickerFieldC.anchor = GridBagConstraints.EAST;
-        addPane.add(tickerField, tickerFieldC);
-
-        JLabel quantityLabel = new JLabel("Quantity");
-        GridBagConstraints quantityLabelC = createGridBagConstraints(0, 1, 1, 1);
-        addPane.add(quantityLabel, quantityLabelC);
-
-        JTextField quantityField = new JTextField("");
-        GridBagConstraints quantityFieldC = createGridBagConstraints(1, 1, 1, 1);
-        quantityFieldC.weightx = 0.5;
-        quantityFieldC.fill = GridBagConstraints.HORIZONTAL;
-        quantityFieldC.anchor = GridBagConstraints.EAST;
-        addPane.add(quantityField, quantityFieldC);
-
-        JTextField priceField = new JTextField("");
-        priceField.setEditable(false);
-        GridBagConstraints priceFieldC = createGridBagConstraints(1, 1, 2, 1);
-        priceFieldC.weightx = 0.5;
-        priceFieldC.fill = GridBagConstraints.HORIZONTAL;
-        priceFieldC.anchor = GridBagConstraints.EAST;
-        addPane.add(priceField, priceFieldC);
-
-        JCheckBox updateBox = new JCheckBox("Automatic price, else specify:", true);
-        updateBox.addItemListener(e -> {
-            if(e.getStateChange() == 1){
-                priceField.setText("");
-                priceField.setEditable(false);
-            }
-            else{
-                priceField.setEditable(true);
-            }
-        });
-
-        GridBagConstraints updateBoxC = createGridBagConstraints(0, 1, 2, 1);
-        addPane.add(updateBox, updateBoxC);
-
-        JPanel tagsPane = new JPanel(new GridLayout(0, 2));
-        tagsPane.add(new JLabel("Tag"));
-        tagsPane.add(new JLabel("Value"));
-
-        ArrayList<JComboBox> boxes = new ArrayList<>();
-
-        //This button adds a new row for a new tag and value
-        JButton addItemButton = new JButton("+");
-        addItemButton.addActionListener(e -> {
-            tagsPane.remove(addItemButton);
-            JComboBox<String> newTagField = new JComboBox<String>(tagMap.getTags());
-            newTagField.setEditable(true);
-
-            tagsPane.add(newTagField);
-            boxes.add(newTagField);
-
-            JComboBox<String> newTagValueField = new JComboBox<String>();
-            newTagValueField.setEditable(true);
-            Component component = newTagValueField.getEditor().getEditorComponent();
-            if (component instanceof JTextField){
-                JTextField comboField = (JTextField) component;
-                comboField.addFocusListener(new FocusListener(){
-                    @Override
-                    public void focusGained(FocusEvent e){//Prepopulate with valid entry
-                        Object tag = newTagField.getSelectedItem();
-                        Object currentVal = newTagValueField.getSelectedItem();
-                        if(tag != null && tagMap.getValuesForTag(tag.toString()) != null){
-                            String[] validValues = tagMap.getValuesForTag(tag.toString());
-                            newTagValueField.removeAllItems();
-                            for(String entry : validValues){
-                                newTagValueField.addItem(entry);
-                            }
-                            if(currentVal != null){
-                                newTagValueField.setSelectedItem(currentVal);
-                            }
-                        }
-                    };
-
-                    @Override
-                    public void focusLost(FocusEvent e){
-
-                    };
-                });
-            }
-
-            tagsPane.add(newTagValueField);
-            boxes.add(newTagValueField);
-
-            tagsPane.add(addItemButton);
-            frame.getContentPane().validate();
-            frame.getContentPane().repaint();
-        });
-        tagsPane.add(addItemButton);
-
-        JScrollPane tagScrollPane = new JScrollPane(tagsPane);
-        GridBagConstraints tagScrollPaneC = createGridBagConstraints(0, 2, 3, 4);
-        tagScrollPaneC.weighty = 0.5;
-        tagScrollPaneC.weightx = 0.5;
-        tagScrollPaneC.fill = GridBagConstraints.BOTH;
-        addPane.add(tagScrollPane, tagScrollPaneC);
+        
+        editPanel = new EditPanel(frame, tagMap);
 
         dateLabel = new JLabel(datesToLabel());
         GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 7, 1);
-        addPane.add(dateLabel, dateLabelC);
+        editPanel.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
         saveButton.addActionListener(e -> {
-            //Create/allocate, warn if failure
-            String msg = "The entry was created successfully.";
-            boolean resultPassed = true;
+            Entry created = editPanel.tryConstruct(apiField.getText(), false);
+            if (created != null){
+                createEntry(created);
 
-            float quantity = 0;
-            String quantityText = quantityField.getText();
-            try{
-                quantity = Float.parseFloat(quantityText);
-            } catch(NumberFormatException unused){
-                msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
-                resultPassed = false;
+                //Update UI
+                dbTime = LocalDateTime.now();
+                dateLabel.setText(datesToLabel());
+                frame.getContentPane().validate();
+                frame.getContentPane().repaint();
+                //Both other panes need to be redrawn
+                drawGraphPane();
+                drawEditPane();
             }
-            if(resultPassed){//No point doing price if quantity is wrong
-                boolean willUpdatePrice = updateBox.isSelected();
-                float price = 0f;
-                String priceText = priceField.getText();
-                String tickerText = tickerField.getText();
-                if(!willUpdatePrice){
-                    try{
-                        price = Float.parseFloat(priceText);
-                    } catch(NumberFormatException unused){
-                        msg = "Could not interpret the price field (" + priceText + ") as text.";
-                        resultPassed = false;
-                    }
-                }
-                else{
-                    price = PriceWorker.updatePrice(tickerText, apiField.getText());
-                    if(price < 0f){
-                        msg = "Could not find a price for the ticker " + tickerText + ".";
-                        resultPassed = false;
-                    }
-                }
-
-                if(resultPassed){//All checks complete
-                    //Create the entry and clear the fields
-                    Entry toAdd = new Entry(tickerText, quantity, willUpdatePrice, price);
-                    for(int i = 0; i < boxes.size(); i += 2){
-                        Object tagO = boxes.get(i).getSelectedItem();
-                        if(tagO == null){
-                            continue;
-                        }
-                        String tag = tagO.toString();
-
-                        Object valueO = boxes.get(i + 1).getSelectedItem();
-                        if(valueO == null){
-                            continue;
-                        }
-                        String value = valueO.toString();
-                        if(!"".equals(tag) && !"".equals(value)){
-                            toAdd.addValue(tag, value);
-                            tagMap.addEntry(tag, value);
-                        }
-                    }
-
-                    entries.add(toAdd);
-
-                    //Reset fields
-                    dbTime = LocalDateTime.now();
-                    dateLabel.setText(datesToLabel());
-                    quantityField.setText("");
-                    tickerField.setText("");
-                    priceField.setText("");
-                    if(!willUpdatePrice){
-                        updateBox.doClick();
-                    }
-                    for(Component i : tagsPane.getComponents()){
-                        if(i instanceof JComboBox){
-                            tagsPane.remove((JComboBox) i);
-                        }
-                    }
-                    boxes.clear();
-                    frame.getContentPane().validate();
-                    frame.getContentPane().repaint();
-                    //Both other panes need to be redrawn
-                    drawGraphPane();
-                    drawEditPane();
-                }
-            }
-
-
-            JOptionPane.showMessageDialog(frame, msg, (resultPassed ? "Entry creation successful" : "Entry creation unsuccessful"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
         });
 
         //Button unique to this tab
@@ -410,7 +239,7 @@ public class Main {
 
         GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 7, 1);
         buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
-        addPane.add(buttonPanel, buttonPanelC);
+        editPanel.add(buttonPanel, buttonPanelC);
     }
 
     //Searches through the entries to find the ones satisfying the criteria
@@ -639,192 +468,27 @@ public class Main {
                         editFrame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
                     } catch(Exception unused){}//Too bad, no icon
 
-                    JPanel editPanel2 = new JPanel(new GridBagLayout());
-                    JLabel tickerLabel = new JLabel("Name/Ticker");
-                    GridBagConstraints tickerLabelC = createGridBagConstraints(0, 1, 0, 1);
-                    editPanel2.add(tickerLabel, tickerLabelC);
-
-                    JTextField tickerField = new JTextField(entryToModify.getTicker());
-                    GridBagConstraints tickerFieldC = createGridBagConstraints(1, 1, 0, 1);
-                    tickerFieldC.weightx = 0.5;
-                    tickerFieldC.fill = GridBagConstraints.HORIZONTAL;
-                    tickerFieldC.anchor = GridBagConstraints.EAST;
-                    editPanel2.add(tickerField, tickerFieldC);
-
-                    JLabel quantityLabel = new JLabel("Quantity");
-                    GridBagConstraints quantityLabelC = createGridBagConstraints(0, 1, 1, 1);
-                    editPanel2.add(quantityLabel, quantityLabelC);
-
-                    JTextField quantityField = new JTextField(entryToModify.getQuantity());
-                    GridBagConstraints quantityFieldC = createGridBagConstraints(1, 1, 1, 1);
-                    quantityFieldC.weightx = 0.5;
-                    quantityFieldC.fill = GridBagConstraints.HORIZONTAL;
-                    quantityFieldC.anchor = GridBagConstraints.EAST;
-                    editPanel2.add(quantityField, quantityFieldC);
-
-                    JTextField priceField = new JTextField(entryToModify.getPrice());
-                    priceField.setEditable(!entryToModify.getUpdatePrice());
-                    GridBagConstraints priceFieldC = createGridBagConstraints(1, 1, 2, 1);
-                    priceFieldC.weightx = 0.5;
-                    priceFieldC.fill = GridBagConstraints.HORIZONTAL;
-                    priceFieldC.anchor = GridBagConstraints.EAST;
-                    editPanel2.add(priceField, priceFieldC);
-
-                    JCheckBox updateBox = new JCheckBox("Automatic price, else specify:", entryToModify.getUpdatePrice());
-                    updateBox.addItemListener(new ItemListener(){
-                        @Override
-                        public void itemStateChanged(ItemEvent e){
-                            if(e.getStateChange() == 1){
-                            priceField.setText("");
-                            priceField.setEditable(false);
-                            }
-                            else{
-                                priceField.setEditable(true);
-                            }
-
-                        };
-                    });
-                    GridBagConstraints updateBoxC = createGridBagConstraints(0, 1, 2, 1);
-                    editPanel2.add(updateBox, updateBoxC);
-
-                    JPanel tagsPane = new JPanel(new GridLayout(0, 2));
-                    tagsPane.add(new JLabel("Tag"));
-                    tagsPane.add(new JLabel("Value"));
-
-                    ArrayList<JComboBox> boxes = new ArrayList<>();
-
-                    JButton addItemButton = new JButton("+");
-                    addItemButton.addActionListener(new ActionListener(){
-                        @Override
-                        public void actionPerformed(ActionEvent e){
-                            tagsPane.remove(addItemButton);
-                            JComboBox<String> newTagField = new JComboBox<String>(tagMap.getTags());
-                            newTagField.setEditable(true);
-
-                            tagsPane.add(newTagField);
-                            boxes.add(newTagField);
-
-                            JComboBox<String> newTagValueField = new JComboBox<String>();
-                            newTagValueField.setEditable(true);
-                            Component component = newTagValueField.getEditor().getEditorComponent();
-                            if (component instanceof JTextField){
-                                JTextField comboField = (JTextField) component;
-                                comboField.addFocusListener(new FocusListener(){
-                                    @Override
-                                    public void focusGained(FocusEvent e){
-                                        Object tag = newTagField.getSelectedItem();
-                                        Object currentVal = newTagValueField.getSelectedItem();
-                                        if(tag != null && tagMap.getValuesForTag(tag.toString()) != null){
-                                            String[] validValues = tagMap.getValuesForTag(tag.toString());
-                                            newTagValueField.removeAllItems();
-                                            for(String entry : validValues){
-                                                newTagValueField.addItem(entry);
-                                            }
-                                            if(currentVal != null){
-                                                newTagValueField.setSelectedItem(currentVal);
-                                            }
-                                        }
-                                    };
-
-                                    @Override
-                                    public void focusLost(FocusEvent e){
-
-                                    };
-                                });
-                            }
-
-                            tagsPane.add(newTagValueField);
-                            boxes.add(newTagValueField);
-
-                            tagsPane.add(addItemButton);
-                            editFrame.getContentPane().validate();
-                            editFrame.getContentPane().repaint();
-                        };
-                    });
-                    tagsPane.add(addItemButton);
-
-                    JScrollPane tagScrollPane = new JScrollPane(tagsPane);
-                    GridBagConstraints tagScrollPaneC = createGridBagConstraints(0, 2, 3, 4);
-                    tagScrollPaneC.weighty = 0.5;
-                    tagScrollPaneC.weightx = 0.5;
-                    tagScrollPaneC.fill = GridBagConstraints.BOTH;
-                    editPanel2.add(tagScrollPane, tagScrollPaneC);
-
-                    //Initialize the boxes
-                    int i = 0;
-                    Set<Map.Entry<String, String>> tags = entryToModify.getIterable();
-                    for(Map.Entry<String, String> entry : tags){
-                        addItemButton.doClick();
-                        boxes.get(i).setSelectedItem(entry.getKey());
-                        boxes.get(i+1).setSelectedItem(entry.getValue());
-                        i += 2;
-                    }
+                    EditPanel localPane = new EditPanel(frame, tagMap, entryToModify);
 
                     JButton saveButton = new JButton("Modify");
                     saveButton.addActionListener(new ActionListener(){
                         @Override
                         public void actionPerformed(ActionEvent e){
-                            //Create/allocate, warn if failure
-                            String msg = "The entry was modified successfully.";
-                            boolean resultPassed = true;
-
-                            float quantity = 0;
-                            String quantityText = quantityField.getText();
-                            try{
-                                quantity = Float.parseFloat(quantityText);
-                            } catch(NumberFormatException unused){
-                                msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
-                                resultPassed = false;
-                            }
-                            boolean willUpdatePrice = updateBox.isSelected();
-                            float price = 0f;
-                            String priceText = priceField.getText();
-                            String tickerText = tickerField.getText();
-                            try{
-                                price = Float.parseFloat(priceText);
-                            } catch(NumberFormatException unused){
-                                msg = "Could not interpret the price field (" + priceText + ") as text.";
-                                resultPassed = false;
-                            }
-                            if(resultPassed){
-                                //Modify the entry
-                                //First remove
+                            Entry created = localPane.tryConstruct(apiField.getText(), false);
+                            if (created != null){
                                 removeEntry(entryToModify);
-
-                                //Add the new
-                                Entry toAdd = new Entry(tickerText, quantity, willUpdatePrice, price);
-                                for(int i = 0; i < boxes.size(); i += 2){
-                                    Object tagO = boxes.get(i).getSelectedItem();
-                                    if(tagO == null){
-                                        continue;
-                                    }
-                                    String tag = tagO.toString();
-
-                                    Object valueO = boxes.get(i + 1).getSelectedItem();
-                                    if(valueO == null){
-                                        continue;
-                                    }
-                                    String value = valueO.toString();
-                                    if(!"".equals(tag) && !"".equals(value)){
-                                        toAdd.addValue(tag, value);
-                                        tagMap.addEntry(tag, value);
-                                    }
-                                }
-
-                                entries.add(toAdd);
+                                createEntry(created);
                                 editFrame.dispose();
                                 dbTime = LocalDateTime.now();
                                 dateLabel.setText(datesToLabel());
                                 drawEditPane();
                                 drawGraphPane();
                             }
-
-                            JOptionPane.showMessageDialog(frame, msg, (resultPassed ? "Entry modified successfully" : "Entry creation unsuccessful"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
                         };
                     });
                     GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 7, 1);
                     saveButtonC.anchor = GridBagConstraints.SOUTHEAST;
-                    editPanel2.add(saveButton, saveButtonC);
+                    localPane.add(saveButton, saveButtonC);
 
                     JButton cancelButton = new JButton("Cancel");
                     cancelButton.addActionListener(lamb -> {
@@ -833,9 +497,9 @@ public class Main {
                     GridBagConstraints cancelButtonC = createGridBagConstraints(0, 1, 7, 1);
                     cancelButtonC.weightx = 1;
                     cancelButtonC.anchor = GridBagConstraints.SOUTHEAST;
-                    editPanel2.add(cancelButton, cancelButtonC);
+                    localPane.add(cancelButton, cancelButtonC);
 
-                    editFrame.add(editPanel2);
+                    editFrame.add(localPane);
                     editFrame.pack();
                     editFrame.setVisible(true);
                 };
@@ -859,10 +523,9 @@ public class Main {
         editScrollPaneC.weighty = 0.5;
         editScrollPaneC.fill = GridBagConstraints.BOTH;
         editPane.add(editScrollPane, editScrollPaneC);
-
     };
 
-    //Basically the exact same as the edit pane, they should be merged in the future
+    //Only holds the API key at present
     private void drawCfgPane(){
         cfgPane.removeAll();
 
@@ -875,30 +538,4 @@ public class Main {
         cfgPane.add(apiField, apiFieldC);
     };
 
-    //Draws the pane used for graphing in addition to the one that holds the graph
-    /*private void drawGraphPane(){
-        graphPane.removeAll();
-
-        JPanel graphPaneTag = new JPanel(new GridLayout(0, tagMap.maxValsForTag() + 1));
-
-        JScrollPane graphScrollPane = new JScrollPane(graphPaneTag);
-        GridBagConstraints graphScrollPaneC = createGridBagConstraints(0, 2, 0, 1);
-        graphScrollPaneC.weightx = 0.5;
-        graphScrollPaneC.weighty = 0.5;
-        graphScrollPaneC.fill = GridBagConstraints.BOTH;
-        graphPane.add(graphScrollPane, graphScrollPaneC);
-
-        GridBagConstraints graphButtonC = createGridBagConstraints(1, 1, 1, 1);
-        graphButtonC.anchor = GridBagConstraints.SOUTHEAST;
-        graphPane.add(graphButton, graphButtonC);
-
-        JLabel instructionsLabel = new JLabel("Use the left column to select the tag that is displayed on the graph. Use the other columns to filter out entries.");
-        GridBagConstraints instructionsLabelC = createGridBagConstraints(0, 1, 1, 1);
-        instructionsLabelC.anchor = GridBagConstraints.SOUTHWEST;
-        instructionsLabelC.weightx = 0.5;
-        graphPane.add(instructionsLabel, instructionsLabelC);
-*/
-
-
 }
-
