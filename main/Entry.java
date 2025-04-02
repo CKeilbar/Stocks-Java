@@ -8,13 +8,15 @@ class Entry {
     private boolean updatePrice;
     private String ticker;
     private float price;
+    private boolean usd;
     private Map<String, String> tagMap;
 
-    public Entry(String ticker, float quantity, boolean updatePrice, float price){
+    public Entry(String ticker, float quantity, boolean updatePrice, float price, boolean usd){
         this.ticker = ticker;
         this.quantity = quantity;
         this.updatePrice = updatePrice;
         this.price = price;
+        this.usd = usd;
         this.tagMap = new HashMap<>(32);
     }
 
@@ -23,8 +25,8 @@ class Entry {
         Entry retVal;
         try{
             String[] splitLine = line.split(",");
-            retVal = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]));
-            for(int i = 4; i < splitLine.length; i += 2){
+            retVal = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), "yes".equals(splitLine[2]), Float.parseFloat(splitLine[3]), "USD".equals(splitLine[4]));
+            for(int i = 5; i < splitLine.length; i += 2){
                 retVal.addValue(splitLine[i], splitLine[i+1]);
             }
         } catch(Exception unused){//Something went wrong while parsing the string, don't complete the construction
@@ -34,8 +36,14 @@ class Entry {
         return retVal;
     }
 
-    public float getValue(){
-        return price * quantity;
+    public float getValue(boolean usd, String apiKey){
+        float tmp = price*quantity;
+        if (!(this.usd ^ usd))
+            return tmp;
+        else if (usd)
+            return tmp * PriceWorker.getExchangeRate(apiKey);
+        else
+            return tmp / PriceWorker.getExchangeRate(apiKey);
     };
 
     public void addValue(String key, String value){
@@ -70,6 +78,10 @@ class Entry {
         return ticker;
     };
 
+    public String getCurrency(){
+        return usd ? "USD" : "CAD";
+    }
+
     public Set<Map.Entry<String, String>> getIterable(){
         return tagMap.entrySet();
     }
@@ -77,7 +89,7 @@ class Entry {
     //The line that gets saved in the file
     @Override
     public String toString(){
-        String essentials = String.join(",", ticker, Float.toString(quantity), (updatePrice ? "yes" : "no"), Float.toString(price));
+        String essentials = String.join(",", ticker, Float.toString(quantity), (updatePrice ? "yes" : "no"), Float.toString(price), getCurrency());
         String tags = System.lineSeparator();
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             tags = "," + i.getKey() + "," + i.getValue() + tags;
@@ -88,7 +100,7 @@ class Entry {
 
     //The line that gets written to the display
     public String displayLine(){
-        String summary = String.join(", ", "Ticker: " + ticker, "Quantity: " + Float.toString(quantity), "Price: " + Float.toString(price));
+        String summary = String.join(", ", "Ticker: " + ticker, "Currency: " + getCurrency(), "Quantity: " + Float.toString(quantity), "Price: " + Float.toString(price));
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             summary += ", " + i.getKey() + ": " + i.getValue();
         }

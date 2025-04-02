@@ -10,6 +10,7 @@ class EditPanel extends JPanel {
 
     //UI elements that we need later access to
     private JTextField quantityField;
+    private JComboBox<String> currBox;
     private JTextField tickerField;
     private JCheckBox updateBox;
     private JTextField priceField;
@@ -34,13 +35,26 @@ class EditPanel extends JPanel {
         tickerFieldC.anchor = GridBagConstraints.EAST;
         add(tickerField, tickerFieldC);
 
+        //Currency
+        JLabel currencyLabel = new JLabel("Currency");
+        GridBagConstraints currencyLabelC = Main.createGridBagConstraints(0, 1, 1, 1);
+        add(currencyLabel, currencyLabelC);
+        
+        String[] opts = {"CAD", "USD"};
+        currBox = new JComboBox<String>(opts);
+        if (entry != null)
+            currBox.setSelectedItem(entry.getCurrency());
+        GridBagConstraints currBoxC = Main.createGridBagConstraints(1, 1, 1, 1);
+        currBoxC.anchor = GridBagConstraints.WEST;
+        add(currBox, currBoxC);
+
         //Quantity
         JLabel quantityLabel = new JLabel("Quantity");
-        GridBagConstraints quantityLabelC = Main.createGridBagConstraints(0, 1, 1, 1);
+        GridBagConstraints quantityLabelC = Main.createGridBagConstraints(0, 1, 2, 1);
         add(quantityLabel, quantityLabelC);
 
         quantityField = new JTextField(entry != null ? entry.getQuantity() : "");
-        GridBagConstraints quantityFieldC = Main.createGridBagConstraints(1, 1, 1, 1);
+        GridBagConstraints quantityFieldC = Main.createGridBagConstraints(1, 1, 2, 1);
         quantityFieldC.weightx = 0.5;
         quantityFieldC.fill = GridBagConstraints.HORIZONTAL;
         quantityFieldC.anchor = GridBagConstraints.EAST;
@@ -49,7 +63,7 @@ class EditPanel extends JPanel {
         //Price
         priceField = new JTextField(entry != null ? entry.getPrice() : "");
         priceField.setEditable(entry != null ? !entry.getUpdatePrice() : false);
-        GridBagConstraints priceFieldC = Main.createGridBagConstraints(1, 1, 2, 1);
+        GridBagConstraints priceFieldC = Main.createGridBagConstraints(1, 1, 3, 1);
         priceFieldC.weightx = 0.5;
         priceFieldC.fill = GridBagConstraints.HORIZONTAL;
         priceFieldC.anchor = GridBagConstraints.EAST;
@@ -65,7 +79,7 @@ class EditPanel extends JPanel {
                 priceField.setEditable(true);
             }
         });
-        GridBagConstraints updateBoxC = Main.createGridBagConstraints(0, 1, 2, 1);
+        GridBagConstraints updateBoxC = Main.createGridBagConstraints(0, 1, 3, 1);
         add(updateBox, updateBoxC);
 
         //Top row
@@ -123,7 +137,7 @@ class EditPanel extends JPanel {
 
         //Scroll box
         JScrollPane tagScrollPane = new JScrollPane(tagsPane);
-        GridBagConstraints tagScrollPaneC = Main.createGridBagConstraints(0, 2, 3, 4);
+        GridBagConstraints tagScrollPaneC = Main.createGridBagConstraints(0, 2, 4, 4);
         tagScrollPaneC.weighty = 0.5;
         tagScrollPaneC.weightx = 0.5;
         tagScrollPaneC.fill = GridBagConstraints.BOTH;
@@ -173,7 +187,7 @@ class EditPanel extends JPanel {
             try{
                 quantity = Float.parseFloat(quantityText);
             } catch(NumberFormatException unused){
-                msg = "Could not interpret the quantity field (" + quantityText + ") as text.";
+                msg = "Could not interpret the quantity field (" + quantityText + ") as a number.";
                 resultPassed = false;
             }
         }
@@ -184,7 +198,7 @@ class EditPanel extends JPanel {
             try{
                 price = Float.parseFloat(priceText);
             } catch(NumberFormatException unused){
-                msg = "Could not interpret the price field (" + priceText + ") as text.";
+                msg = "Could not interpret the price field (" + priceText + ") as a number.";
                 resultPassed = false;
             }
         }
@@ -199,7 +213,7 @@ class EditPanel extends JPanel {
         //All checks complete, create entry
         if(resultPassed){
             //Create the entry and clear the fields
-            toAdd = new Entry(ticker, quantity, willUpdatePrice, price);
+            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, currBox.getSelectedIndex() == 1);
             
             for(int i = 0; i < boxes.size(); i += 2){
                 Object tagO = boxes.get(i).getSelectedItem();

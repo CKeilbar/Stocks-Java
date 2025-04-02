@@ -18,11 +18,12 @@ public class Main {
     //Database information
     private ArrayList<Entry> entries = new ArrayList<Entry>();
     private TagTracker tagMap = new TagTracker();
-    
+
     //Shared variables
     private LocalDateTime priceTime = LocalDateTime.now(); //Default to current, overwritten if previous is found
     private LocalDateTime dbTime = priceTime;
     private String prevApiKey = "";
+    private String prevCurr = "CAD";
 
     //UI Stuff
     private JLabel dateLabel;
@@ -30,6 +31,9 @@ public class Main {
     private JPanel viewPane = new JPanel(new GridBagLayout());
     private JPanel graphPane = new JPanel(new GridBagLayout());
     private JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
+    private JComboBox<String> graphCurrBox;
+    private JCheckBox autoRate;
+    private JTextField rateField;
 
     public static void main(String[] args) {
         new Main();
@@ -74,8 +78,15 @@ public class Main {
     private void readPrev(){
         try(BufferedReader br = new BufferedReader(new FileReader(saveFname))){
             String line;
-            //First line is the saved API key
-            prevApiKey = br.readLine();
+
+            //First line contains the config info in order
+            line = br.readLine();
+            String[] splitLine = line.split(",");
+            prevApiKey = splitLine[0];
+            prevCurr = splitLine[1];
+            PriceWorker.shouldUpdate = "yes".equals(splitLine[2]);
+            PriceWorker.setExchangeRate(Float.parseFloat(splitLine[3]));
+
             //Next two lines are the last price modification and database modification dates
             try{
                 line = br.readLine();
@@ -93,7 +104,7 @@ public class Main {
                 }
             }
 
-        } catch (IOException unused){
+        } catch (Exception unused){
             //Very bad
         }
     };
@@ -101,7 +112,8 @@ public class Main {
     //Writes to the local file to store our entries for next time
     private void writePrev(){
         try(BufferedWriter bw = new BufferedWriter(new FileWriter(saveFname))){
-            bw.write(apiField.getText());
+
+            bw.write(String.join(",", apiField.getText(), graphCurrBox.getSelectedItem().toString(), (PriceWorker.shouldUpdate ? "yes" : "no"), PriceWorker.getExchangeRate()));
             bw.newLine();
             bw.write(priceTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             bw.newLine();
@@ -155,11 +167,11 @@ public class Main {
 
     //This panel is used to create new entries
     private JPanel createAddPane(){
-        
+
         EditPanel createPane = new EditPanel(frame, tagMap);
 
         dateLabel = new JLabel(datesToLabel());
-        GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 7, 1);
+        GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 8, 1);
         createPane.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
@@ -236,7 +248,7 @@ public class Main {
         buttonPanel.add(updateButton);
         buttonPanel.add(saveButton);
 
-        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 7, 1);
+        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 8, 1);
         buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
         createPane.add(buttonPanel, buttonPanelC);
 
@@ -272,7 +284,7 @@ public class Main {
         Map<String, Float> unsortedMap = new HashMap<>();
         for(Entry i : clone){
             String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
-            unsortedMap.put(myTag, i.getValue() + unsortedMap.getOrDefault(myTag, 0f));
+            unsortedMap.put(myTag, i.getValue(graphCurrBox.getSelectedIndex() == 1, apiField.getText()) + unsortedMap.getOrDefault(myTag, 0f));
         }
 
         Map<String, Float> retMap = new LinkedHashMap<>();//Order is required
@@ -345,7 +357,7 @@ public class Main {
                 myPieC.weighty = 0.9;
                 piePane.add(myPie, myPieC);
 
-                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal()));
+                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f %s", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal(), graphCurrBox.getSelectedItem().toString()));
                 GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
                 piePane.add(graphTitle, graphTitleC);
 
@@ -488,7 +500,7 @@ public class Main {
                             }
                         };
                     });
-                    GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 7, 1);
+                    GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 8, 1);
                     saveButtonC.anchor = GridBagConstraints.SOUTHEAST;
                     localPane.add(saveButton, saveButtonC);
 
@@ -496,7 +508,7 @@ public class Main {
                     cancelButton.addActionListener(lamb -> {
                         editFrame.dispose();
                     });
-                    GridBagConstraints cancelButtonC = createGridBagConstraints(0, 1, 7, 1);
+                    GridBagConstraints cancelButtonC = createGridBagConstraints(0, 1, 8, 1);
                     cancelButtonC.weightx = 1;
                     cancelButtonC.anchor = GridBagConstraints.SOUTHEAST;
                     localPane.add(cancelButton, cancelButtonC);
@@ -531,13 +543,65 @@ public class Main {
     private JPanel createCfgPane(){
         JPanel cfgPane = new JPanel(new GridBagLayout());
 
-        JLabel apiLabel = new JLabel("Alpha Vantage API Key");
+        //API key
+        JLabel apiLabel = new JLabel("Alpha Vantage API Key: ");
         GridBagConstraints apiLabelC = createGridBagConstraints(0, 1, 0, 1);
         cfgPane.add(apiLabel, apiLabelC);
 
         apiField.setText(prevApiKey);
         GridBagConstraints apiFieldC = createGridBagConstraints(1, 1, 0, 1);
         cfgPane.add(apiField, apiFieldC);
+
+        //Graph currency
+        JLabel graphCurrLabel = new JLabel("Graph currency: ");
+        GridBagConstraints graphCurrLabelC = createGridBagConstraints(0, 1, 1, 1);
+        cfgPane.add(graphCurrLabel, graphCurrLabelC);
+
+        String[] opts = {"CAD", "USD"};
+        graphCurrBox = new JComboBox<String>(opts);
+        graphCurrBox.setSelectedItem(prevCurr);
+        GridBagConstraints graphCurrBoxC = createGridBagConstraints(1, 1, 1, 1);
+        graphCurrBoxC.anchor = GridBagConstraints.WEST;
+        cfgPane.add(graphCurrBox, graphCurrBoxC);
+
+        //Exchange rate
+        rateField = new JTextField(PriceWorker.shouldUpdate ? "" : PriceWorker.getExchangeRate(), 10); //Do not show outdated price
+        rateField.setEditable(!PriceWorker.shouldUpdate);
+        rateField.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {} //Do nothing
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                String rateText = rateField.getText();
+                try{
+                    float newRate = Float.parseFloat(rateText);
+                    PriceWorker.setExchangeRate(newRate);
+                } catch (NumberFormatException unused){
+                    //Silently undo
+                    rateField.setText(PriceWorker.getExchangeRate());
+                }
+            }
+        });
+
+        GridBagConstraints rateFieldC = createGridBagConstraints(1, 1, 2, 1);
+        cfgPane.add(rateField, rateFieldC);
+
+        autoRate = new JCheckBox("Automatic exchange rate, else specify CAD to USD:", PriceWorker.shouldUpdate);
+        autoRate.addItemListener(e -> {
+            if(e.getStateChange() == 1){
+                PriceWorker.shouldUpdate = true;
+                PriceWorker.updateRate(apiField.getText());
+                rateField.setText(PriceWorker.getExchangeRate());
+                rateField.setEditable(false);
+            }
+            else{
+                PriceWorker.shouldUpdate = false;
+                rateField.setEditable(true);
+            }
+        });
+        GridBagConstraints autoRateC = Main.createGridBagConstraints(0, 1, 2, 1);
+        cfgPane.add(autoRate, autoRateC);
 
         return cfgPane;
     };
