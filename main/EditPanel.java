@@ -10,7 +10,7 @@ class EditPanel extends JPanel {
 
     //UI elements that we need later access to
     private JTextField quantityField;
-    private JComboBox<String> currBox;
+    private JComboBox<Currency> currBox;
     private JTextField tickerField;
     private JCheckBox updateBox;
     private JTextField priceField;
@@ -19,7 +19,7 @@ class EditPanel extends JPanel {
     private JFrame parentFrame;
 
     //Create panel and prepopulate fields
-    public EditPanel(JFrame parentFrame, TagTracker tagTracker, Entry entry) {
+    public EditPanel(JFrame parentFrame, Entry entry) {
         setLayout(new GridBagLayout());
         this.parentFrame = parentFrame;
 
@@ -40,8 +40,7 @@ class EditPanel extends JPanel {
         GridBagConstraints currencyLabelC = Main.createGridBagConstraints(0, 1, 1, 1);
         add(currencyLabel, currencyLabelC);
         
-        String[] opts = {"CAD", "USD"};
-        currBox = new JComboBox<String>(opts);
+        currBox = new JComboBox<Currency>(Currency.values());
         if (entry != null)
             currBox.setSelectedItem(entry.getCurrency());
         GridBagConstraints currBoxC = Main.createGridBagConstraints(1, 1, 1, 1);
@@ -92,7 +91,7 @@ class EditPanel extends JPanel {
         JButton addItemButton = new JButton("+");
         addItemButton.addActionListener(e -> {
             tagsPane.remove(addItemButton);
-            JComboBox<String> newTagField = new JComboBox<String>(tagTracker.getTags());
+            JComboBox<String> newTagField = new JComboBox<String>(Db.getTags());
             newTagField.setEditable(true);
 
             tagsPane.add(newTagField);
@@ -109,14 +108,16 @@ class EditPanel extends JPanel {
                         Object tag = newTagField.getSelectedItem();
                         Object currentVal = newTagValueField.getSelectedItem();
                         //Prepopulate with valid entry
-                        if(tag != null && tagTracker.getValuesForTag(tag.toString()) != null){
-                            String[] validValues = tagTracker.getValuesForTag(tag.toString());
-                            newTagValueField.removeAllItems();
-                            for(String entry : validValues){
-                                newTagValueField.addItem(entry);
-                            }
-                            if(currentVal != null){
-                                newTagValueField.setSelectedItem(currentVal);
+                        if(tag != null){
+                            String[] validValues = Db.getValuesForTag(tag.toString());
+                            if (validValues != null){
+                                newTagValueField.removeAllItems();
+                                for(String entry : validValues){
+                                    newTagValueField.addItem(entry);
+                                }
+                                if(currentVal != null){
+                                    newTagValueField.setSelectedItem(currentVal);
+                                }
                             }
                         }
                     };
@@ -157,14 +158,14 @@ class EditPanel extends JPanel {
     }
 
     //Create panel without prepopulating
-    public EditPanel(JFrame parentFrame, TagTracker tagTracker) {
-        this(parentFrame, tagTracker, null);
+    public EditPanel(JFrame parentFrame) {
+        this(parentFrame, null);
     }
 
     //Tries to construct the entry according to the values in the panel, creating a popup displaying the result
     //The modify flag is used to determine the correct wording for this popup
     //Returns the constructed entry if successful, else null
-    public Entry tryConstruct(String apiKey, boolean modify) {
+    public Entry tryConstruct(boolean modify) {
         //Key entry properties
         String ticker = tickerField.getText();
         float quantity = 0f;
@@ -203,7 +204,7 @@ class EditPanel extends JPanel {
             }
         }
         else if(resultPassed){
-            price = PriceWorker.updatePrice(ticker, apiKey);
+            price = PriceWorker.updatePrice(ticker);
             if(price < 0f){
                 msg = "Could not find a price for the ticker " + ticker + ".";
                 resultPassed = false;
@@ -213,7 +214,7 @@ class EditPanel extends JPanel {
         //All checks complete, create entry
         if(resultPassed){
             //Create the entry and clear the fields
-            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, currBox.getSelectedIndex() == 1);
+            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, (Currency) currBox.getSelectedItem());
             
             for(int i = 0; i < boxes.size(); i += 2){
                 Object tagO = boxes.get(i).getSelectedItem();

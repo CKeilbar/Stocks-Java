@@ -1,9 +1,6 @@
 package main;
 
 import java.util.*;
-import java.io.*;
-import java.time.*;
-import java.time.format.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -12,28 +9,11 @@ import javax.imageio.ImageIO;
 
 public class Main {
 
-    //Save file
-    private final String saveFname = "prevInfo.txt";
-
-    //Database information
-    private ArrayList<Entry> entries = new ArrayList<Entry>();
-    private TagTracker tagMap = new TagTracker();
-
-    //Shared variables
-    private LocalDateTime priceTime = LocalDateTime.now(); //Default to current, overwritten if previous is found
-    private LocalDateTime dbTime = priceTime;
-    private String prevApiKey = "";
-    private String prevCurr = "CAD";
-
     //UI Stuff
     private JLabel dateLabel;
     private JFrame frame = new JFrame("Stock Visualizer");
     private JPanel viewPane = new JPanel(new GridBagLayout());
     private JPanel graphPane = new JPanel(new GridBagLayout());
-    private JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
-    private JComboBox<String> graphCurrBox;
-    private JCheckBox autoRate;
-    private JTextField rateField;
 
     public static void main(String[] args) {
         new Main();
@@ -41,7 +21,7 @@ public class Main {
 
     //Initializes the UI
     public Main(){
-        readPrev();
+        Db.readDb();
 
         /*try{//Windows does not respect setting the button colour
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -55,7 +35,7 @@ public class Main {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter(){
             public void windowClosing(WindowEvent e){
-                writePrev();
+                Db.writeDb();
             };
         });
 
@@ -74,86 +54,6 @@ public class Main {
         frame.setVisible(true);
     }
 
-    //Reads from the local file for our saved entries
-    private void readPrev(){
-        try(BufferedReader br = new BufferedReader(new FileReader(saveFname))){
-            String line;
-
-            //First line contains the config info in order
-            line = br.readLine();
-            String[] splitLine = line.split(",");
-            prevApiKey = splitLine[0];
-            prevCurr = splitLine[1];
-            PriceWorker.shouldUpdate = "yes".equals(splitLine[2]);
-            PriceWorker.setExchangeRate(Float.parseFloat(splitLine[3]));
-
-            //Next two lines are the last price modification and database modification dates
-            try{
-                line = br.readLine();
-                priceTime = LocalDateTime.parse(line);
-                line = br.readLine();
-                dbTime = LocalDateTime.parse(line);
-            } catch (DateTimeParseException unused){
-                //Use initialized defaults
-            }
-            //Rest of the lines correspond to entries
-            while((line = br.readLine()) != null){
-                Entry currentEntry = Entry.fromString(line);
-                if (currentEntry != null){
-                    createEntry(currentEntry);
-                }
-            }
-
-        } catch (Exception unused){
-            //Very bad
-        }
-    };
-
-    //Writes to the local file to store our entries for next time
-    private void writePrev(){
-        try(BufferedWriter bw = new BufferedWriter(new FileWriter(saveFname))){
-
-            bw.write(String.join(",", apiField.getText(), graphCurrBox.getSelectedItem().toString(), (PriceWorker.shouldUpdate ? "yes" : "no"), PriceWorker.getExchangeRate()));
-            bw.newLine();
-            bw.write(priceTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            bw.newLine();
-            bw.write(dbTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            bw.newLine();
-            for(Entry i : entries){
-                bw.write(i.toString());
-            }
-        } catch (Exception unused){
-            //Very bad
-        }
-    };
-
-    //Returns the timestamps formatted as text
-    private String datesToLabel(){
-        DateTimeFormatter dispTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
-        String startString = "Database last modified ";
-        String dbString = "";
-        String middleString = "; prices last updated ";
-        String priceString = "";
-
-        try {
-            dbString = dbTime.format(dispTimeFormat);
-            priceString = priceTime.format(dispTimeFormat);
-        } catch (DateTimeException unused){
-            //Use the default empty strings
-        }
-        return startString + dbString + middleString + priceString;
-    }
-
-    //These functions deal with the tag manager as well as the list
-    private void removeEntry(Entry entry){
-        entries.remove(entry);
-        tagMap.removeEntry(entry.getIterable());
-    }
-    private void createEntry(Entry entry){
-        entries.add(entry);
-        tagMap.addEntry(entry.getIterable());
-    }
-
     //Convenience method for creating the constraints
     //Aditional manual configuration will be optionally needed to set the weights
     public static GridBagConstraints createGridBagConstraints(int xLoc, int xWidth, int yLoc, int yHeight){
@@ -168,21 +68,20 @@ public class Main {
     //This panel is used to create new entries
     private JPanel createAddPane(){
 
-        EditPanel createPane = new EditPanel(frame, tagMap);
+        EditPanel createPane = new EditPanel(frame);
 
-        dateLabel = new JLabel(datesToLabel());
+        dateLabel = new JLabel(Db.datesToLabel());
         GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 8, 1);
         createPane.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
         saveButton.addActionListener(e -> {
-            Entry created = createPane.tryConstruct(apiField.getText(), false);
+            Entry created = createPane.tryConstruct(false);
             if (created != null){
-                createEntry(created);
+                Db.createEntry(created);
 
                 //Update UI
-                dbTime = LocalDateTime.now();
-                dateLabel.setText(datesToLabel());
+                dateLabel.setText(Db.datesToLabel());
                 frame.getContentPane().validate();
                 frame.getContentPane().repaint();
                 //Both other panes need to be redrawn
@@ -197,12 +96,12 @@ public class Main {
             //Blocks others
             JDialog progressDialog = new JDialog(frame, "Updating prices...", Dialog.ModalityType.APPLICATION_MODAL);
 
-            JProgressBar progressBar = new JProgressBar(0, Math.max(entries.size(), 1));
+            JProgressBar progressBar = new JProgressBar(0, Math.max(Db.getNumEntries(), 1));
             progressBar.setValue(0);
             progressBar.setString("Initializing");
             progressBar.setStringPainted(true);
 
-            PriceWorker priceWorker = new PriceWorker(apiField.getText(), entries);
+            PriceWorker priceWorker = new PriceWorker();
             priceWorker.addPropertyChangeListener(new PropertyChangeListener(){
                 public void propertyChange(PropertyChangeEvent evt){
                     if(evt.getPropertyName() != "progress"){
@@ -210,8 +109,8 @@ public class Main {
                     }
                     int progress = (Integer) evt.getNewValue();
                     progressBar.setValue(progress);
-                    if(progress < entries.size()){
-                        progressBar.setString(entries.get(progress).getTicker());
+                    if(progress < Db.getNumEntries()){
+                        progressBar.setString(Db.getEntry(progress).getTicker());
                     }
                     else{
                         progressBar.setString("Done");
@@ -230,8 +129,8 @@ public class Main {
                             JOptionPane.showMessageDialog(frame, "Reading progress returned an exception.", "Price update unknown", JOptionPane.ERROR_MESSAGE);
                         }
 
-                        priceTime = LocalDateTime.now();
-                        dateLabel.setText(datesToLabel());
+                        Db.updatePriceTime();
+                        dateLabel.setText(Db.datesToLabel());
                         drawViewPane();
                         progressDialog.dispose();
                     }
@@ -255,49 +154,11 @@ public class Main {
         return createPane;
     }
 
-    //Searches through the entries to find the ones satisfying the criteria
-    //The inc values MUST be present, and the rem values MUST NOT, this functions as a logical AND
-    private Map<String, Float> findGraphables(String axis, ArrayList<String> incVal, ArrayList<String> incTag, ArrayList<String> remVal, ArrayList<String> remTag){
-        ArrayList<Entry> clone = new ArrayList<>(entries);
-
-        for(int i = 0; i < incVal.size(); i++){//Remove all of the entries that don't satisfy the includes
-            for(int j = clone.size()-1; j >= 0; j--){
-                if(!clone.get(j).containsPair(incTag.get(i), incVal.get(i))){
-                    clone.remove(j);
-                }
-            }
-            if(clone.size() == 0){
-                return null;
-            }
-        }
-        for(int i = 0; i < remVal.size(); i++){//Remove all entries that satisfy the removes
-            for(int j = clone.size()-1; j >= 0; j--){
-                if(clone.get(j).containsPair(remTag.get(i), remVal.get(i))){
-                    clone.remove(j);
-                }
-            }
-            if(clone.size() == 0){
-                return null;
-            }
-        }
-        //Clone now holds only valid values
-        Map<String, Float> unsortedMap = new HashMap<>();
-        for(Entry i : clone){
-            String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
-            unsortedMap.put(myTag, i.getValue(graphCurrBox.getSelectedIndex() == 1, apiField.getText()) + unsortedMap.getOrDefault(myTag, 0f));
-        }
-
-        Map<String, Float> retMap = new LinkedHashMap<>();//Order is required
-        //Sort by value
-        unsortedMap.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).forEach(entry -> retMap.put(entry.getKey(), entry.getValue()));
-        return retMap;
-    }
-
     //Draws the pane used for graphing in addition to the one that holds the graph
     private void drawGraphPane(){
         graphPane.removeAll();
 
-        JPanel graphPaneTag = new JPanel(new GridLayout(0, tagMap.maxValsForTag() + 1));
+        JPanel graphPaneTag = new JPanel(new GridLayout(0, Db.maxValsForTag() + 1));
 
         JScrollPane graphScrollPane = new JScrollPane(graphPaneTag);
         GridBagConstraints graphScrollPaneC = createGridBagConstraints(0, 2, 0, 1);
@@ -310,7 +171,7 @@ public class Main {
 
         //Launch the graph
         graphButton.addActionListener(e -> {
-            int length = tagMap.maxValsForTag()+1;
+            int length = Db.maxValsForTag()+1;
             ArrayList<String> includeValues = new ArrayList<>();
             ArrayList<String> includeValueTags = new ArrayList<>();
             ArrayList<String> removeValues = new ArrayList<>();
@@ -318,7 +179,7 @@ public class Main {
             String axisTag = "";
 
             //Look at the buttons to see what has been selected
-            for(int i = 0; i < tagMap.getTags().length * length; i++){
+            for(int i = 0; i < Db.getTags().length * length; i++){
                 JButton buttonToExamine = (JButton) graphPaneTag.getComponent(i);
                 Color buttonColour = buttonToExamine.getBackground();
                 if(i % length == 0 && buttonColour == Color.GREEN){
@@ -335,7 +196,7 @@ public class Main {
                 else{
                 }
             }
-            Map<String, Float> graphable = findGraphables(axisTag, includeValues, includeValueTags, removeValues, removeValueTags);
+            Map<String, Float> graphable = Db.findGraphables(axisTag, includeValues, includeValueTags, removeValues, removeValueTags);
             if(graphable == null){
                 JOptionPane.showMessageDialog(frame, "No entries matched the criteria.", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
@@ -357,7 +218,7 @@ public class Main {
                 myPieC.weighty = 0.9;
                 piePane.add(myPie, myPieC);
 
-                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f %s", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal(), graphCurrBox.getSelectedItem().toString()));
+                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f %s", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal(), Db.getGraphCurrency().toString()));
                 GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
                 piePane.add(graphTitle, graphTitleC);
 
@@ -404,8 +265,8 @@ public class Main {
         graphPane.add(instructionsLabel, instructionsLabelC);
 
         //Rows of tags, colomuns of values
-        int widestRow = tagMap.maxValsForTag();
-        String[] tags = tagMap.getTags();
+        int widestRow = Db.maxValsForTag();
+        String[] tags = Db.getTags();
         for(int i = 0; i < tags.length; i++){
             JButton tagNameButton = new JButton(tags[i]);
             tagNameButton.addActionListener(e -> {
@@ -422,7 +283,7 @@ public class Main {
             });
             graphPaneTag.add(tagNameButton);
 
-            String[] values = tagMap.getValuesForTag(tags[i]);
+            String[] values = Db.getValuesForTag(tags[i]);
             int valuesInThisRow = values.length;
             for(int j = 0; j < widestRow; j++){
                 if(j < valuesInThisRow){
@@ -455,15 +316,14 @@ public class Main {
     private void drawViewPane(){
         viewPane.removeAll();
         JPanel viewTagPane = new JPanel(new GridBagLayout());
-        int numRows = entries.size();
+        int numRows = Db.getNumEntries();
         for(int i = 0; i < numRows; i++){
-            Entry entryToModify = entries.get(i);
+            Entry entryToModify = Db.getEntry(i);
 
             JButton deleteButton = new JButton("Remove");
             deleteButton.addActionListener(e -> {
-                removeEntry(entryToModify);
-                dbTime = LocalDateTime.now();
-                dateLabel.setText(datesToLabel());
+                Db.removeEntry(entryToModify);
+                dateLabel.setText(Db.datesToLabel());
                 drawGraphPane();
                 drawViewPane();
             });
@@ -482,19 +342,18 @@ public class Main {
                         editFrame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
                     } catch(Exception unused){}//Too bad, no icon
 
-                    EditPanel localPane = new EditPanel(frame, tagMap, entryToModify);
+                    EditPanel localPane = new EditPanel(frame, entryToModify);
 
                     JButton saveButton = new JButton("Modify");
                     saveButton.addActionListener(new ActionListener(){
                         @Override
                         public void actionPerformed(ActionEvent e){
-                            Entry created = localPane.tryConstruct(apiField.getText(), false);
+                            Entry created = localPane.tryConstruct(false);
                             if (created != null){
-                                removeEntry(entryToModify);
-                                createEntry(created);
+                                Db.removeEntry(entryToModify);
+                                Db.createEntry(created);
                                 editFrame.dispose();
-                                dbTime = LocalDateTime.now();
-                                dateLabel.setText(datesToLabel());
+                                dateLabel.setText(Db.datesToLabel());
                                 drawViewPane();
                                 drawGraphPane();
                             }
@@ -523,7 +382,7 @@ public class Main {
             modifyButtonC.weightx = 0.1;
             viewTagPane.add(modifyButton, modifyButtonC);
 
-            JLabel descriptionLabel = new JLabel(entries.get(i).displayLine());
+            JLabel descriptionLabel = new JLabel(Db.getEntry(i).displayLine());
             GridBagConstraints descriptionLabelC = createGridBagConstraints(2, 1, i, 1);
             descriptionLabelC.weightx = 0.9;
             descriptionLabelC.fill = GridBagConstraints.HORIZONTAL;
@@ -548,7 +407,18 @@ public class Main {
         GridBagConstraints apiLabelC = createGridBagConstraints(0, 1, 0, 1);
         cfgPane.add(apiLabel, apiLabelC);
 
-        apiField.setText(prevApiKey);
+        JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
+        apiField.setText(Db.getApiKey());
+        apiField.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {} //Do nothing
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                Db.setApiKey(apiField.getText());
+            }
+        });
+
         GridBagConstraints apiFieldC = createGridBagConstraints(1, 1, 0, 1);
         cfgPane.add(apiField, apiFieldC);
 
@@ -557,29 +427,31 @@ public class Main {
         GridBagConstraints graphCurrLabelC = createGridBagConstraints(0, 1, 1, 1);
         cfgPane.add(graphCurrLabel, graphCurrLabelC);
 
-        String[] opts = {"CAD", "USD"};
-        graphCurrBox = new JComboBox<String>(opts);
-        graphCurrBox.setSelectedItem(prevCurr);
+        JComboBox<Currency> graphCurrBox = new JComboBox<Currency>(Currency.values());
+        graphCurrBox.setSelectedItem(Db.getGraphCurrency());
         GridBagConstraints graphCurrBoxC = createGridBagConstraints(1, 1, 1, 1);
         graphCurrBoxC.anchor = GridBagConstraints.WEST;
         cfgPane.add(graphCurrBox, graphCurrBoxC);
 
         //Exchange rate
-        rateField = new JTextField(PriceWorker.shouldUpdate ? "" : PriceWorker.getExchangeRate(), 10); //Do not show outdated price
-        rateField.setEditable(!PriceWorker.shouldUpdate);
+        boolean willUpdateRate = Db.getAutoRate();
+        JTextField rateField = new JTextField(willUpdateRate ? "" : Db.getExchangeRate(), 10); //Do not show outdated price
+        rateField.setEditable(!willUpdateRate);
         rateField.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {} //Do nothing
 
             @Override
             public void focusLost(FocusEvent e) {
+                if (Db.getAutoRate()) //Do nothing if not enabled
+                    return;
                 String rateText = rateField.getText();
                 try{
                     float newRate = Float.parseFloat(rateText);
-                    PriceWorker.setExchangeRate(newRate);
+                    Db.setExchangeRate(newRate);
                 } catch (NumberFormatException unused){
                     //Silently undo
-                    rateField.setText(PriceWorker.getExchangeRate());
+                    rateField.setText(Db.getExchangeRate());
                 }
             }
         });
@@ -587,18 +459,12 @@ public class Main {
         GridBagConstraints rateFieldC = createGridBagConstraints(1, 1, 2, 1);
         cfgPane.add(rateField, rateFieldC);
 
-        autoRate = new JCheckBox("Automatic exchange rate, else specify CAD to USD:", PriceWorker.shouldUpdate);
+        JCheckBox autoRate = new JCheckBox("Automatic exchange rate, else specify CAD to USD:", Db.getAutoRate());
         autoRate.addItemListener(e -> {
-            if(e.getStateChange() == 1){
-                PriceWorker.shouldUpdate = true;
-                PriceWorker.updateRate(apiField.getText());
-                rateField.setText(PriceWorker.getExchangeRate());
-                rateField.setEditable(false);
-            }
-            else{
-                PriceWorker.shouldUpdate = false;
-                rateField.setEditable(true);
-            }
+            rateField.setEditable(Db.getAutoRate());
+            Db.toggleAutoRate();
+            if(e.getStateChange() == 1)
+                rateField.setText(Db.getExchangeRate());
         });
         GridBagConstraints autoRateC = Main.createGridBagConstraints(0, 1, 2, 1);
         cfgPane.add(autoRate, autoRateC);
