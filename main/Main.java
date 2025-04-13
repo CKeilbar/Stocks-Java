@@ -68,10 +68,10 @@ public class Main {
     //This panel is used to create new entries
     private JPanel createAddPane(){
 
-        EditPanel createPane = new EditPanel(frame);
+        EditPanel createPane = new EditPanel();
 
         dateLabel = new JLabel(Db.datesToLabel());
-        GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 8, 1);
+        GridBagConstraints dateLabelC = createGridBagConstraints(0, 1, 9, 1);
         createPane.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
@@ -82,8 +82,6 @@ public class Main {
 
                 //Update UI
                 dateLabel.setText(Db.datesToLabel());
-                frame.getContentPane().validate();
-                frame.getContentPane().repaint();
                 //Both other panes need to be redrawn
                 drawGraphPane();
                 drawViewPane();
@@ -147,7 +145,7 @@ public class Main {
         buttonPanel.add(updateButton);
         buttonPanel.add(saveButton);
 
-        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 8, 1);
+        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 9, 1);
         buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
         createPane.add(buttonPanel, buttonPanelC);
 
@@ -167,8 +165,16 @@ public class Main {
         graphScrollPaneC.fill = GridBagConstraints.BOTH;
         graphPane.add(graphScrollPane, graphScrollPaneC);
 
-        JButton graphButton = new JButton("Graph");
+        //Graph Buttons
+        JCheckBox divCheckBox = new JCheckBox("Dividends");
 
+        JComboBox<Currency> graphCurrBox = new JComboBox<Currency>(Currency.values());
+        graphCurrBox.setSelectedItem(Db.getGraphCurrency());
+        graphCurrBox.addActionListener(e -> {
+            Db.setGraphCurrency((Currency) graphCurrBox.getSelectedItem());
+        });
+
+        JButton graphButton = new JButton("Graph");
         //Launch the graph
         graphButton.addActionListener(e -> {
             int length = Db.maxValsForTag()+1;
@@ -196,7 +202,13 @@ public class Main {
                 else{
                 }
             }
-            Map<String, Float> graphable = Db.findGraphables(axisTag, includeValues, includeValueTags, removeValues, removeValueTags);
+            //Get the data to be graphed
+            boolean graphDiv = divCheckBox.isSelected();
+            Object[] retArr = Db.findGraphables(axisTag, includeValues, includeValueTags, removeValues, removeValueTags, graphDiv);
+            @SuppressWarnings("unchecked")
+            Map<String, Float> graphable = (Map<String, Float>) retArr[0];
+            float totalValue = (float) retArr[1];
+            float toalPayout = (float) retArr[2];
             if(graphable == null){
                 JOptionPane.showMessageDialog(frame, "No entries matched the criteria.", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
@@ -218,7 +230,7 @@ public class Main {
                 myPieC.weighty = 0.9;
                 piePane.add(myPie, myPieC);
 
-                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f %s", "".equals(axisTag) ? "None" : axisTag, myPie.getTotal(), Db.getGraphCurrency().toString()));
+                JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f - Yield: $%,.2f (%.2f%%) - %s", "".equals(axisTag) ? "None" : axisTag, totalValue, toalPayout, 100f*toalPayout/totalValue, Db.getGraphCurrency().toString()));
                 GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
                 piePane.add(graphTitle, graphTitleC);
 
@@ -254,9 +266,13 @@ public class Main {
             }
         });
 
-        GridBagConstraints graphButtonC = createGridBagConstraints(1, 1, 1, 1);
-        graphButtonC.anchor = GridBagConstraints.SOUTHEAST;
-        graphPane.add(graphButton, graphButtonC);
+        JPanel buttonPanel = new JPanel(new GridLayout(0, 3));
+        buttonPanel.add(graphCurrBox);
+        buttonPanel.add(divCheckBox);
+        buttonPanel.add(graphButton);
+        GridBagConstraints buttonPanelC = createGridBagConstraints(1, 1, 1, 1);
+        buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
+        graphPane.add(buttonPanel, buttonPanelC);
 
         JLabel instructionsLabel = new JLabel("Use the left column to select the tag that is displayed on the graph. Use the other columns to filter out entries.");
         GridBagConstraints instructionsLabelC = createGridBagConstraints(0, 1, 1, 1);
@@ -337,18 +353,16 @@ public class Main {
             modifyButton.addActionListener(new ActionListener(){
                 @Override
                 public void actionPerformed(ActionEvent e){
-                    JFrame editFrame = new JFrame("Edit entry");
-                    try{
-                        editFrame.setIconImage(ImageIO.read(this.getClass().getResource("icon.png")));
-                    } catch(Exception unused){}//Too bad, no icon
+                    JDialog editFrame = new JDialog(frame, "Edit entry", true);
+                    editFrame.setLocationRelativeTo(frame);
 
-                    EditPanel localPane = new EditPanel(frame, entryToModify);
+                    EditPanel localPane = new EditPanel(entryToModify);
 
                     JButton saveButton = new JButton("Modify");
                     saveButton.addActionListener(new ActionListener(){
                         @Override
                         public void actionPerformed(ActionEvent e){
-                            Entry created = localPane.tryConstruct(false);
+                            Entry created = localPane.tryConstruct(true);
                             if (created != null){
                                 Db.removeEntry(entryToModify);
                                 Db.createEntry(created);
@@ -359,7 +373,7 @@ public class Main {
                             }
                         };
                     });
-                    GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 8, 1);
+                    GridBagConstraints saveButtonC = createGridBagConstraints(1, 1, 9, 1);
                     saveButtonC.anchor = GridBagConstraints.SOUTHEAST;
                     localPane.add(saveButton, saveButtonC);
 
@@ -367,7 +381,7 @@ public class Main {
                     cancelButton.addActionListener(lamb -> {
                         editFrame.dispose();
                     });
-                    GridBagConstraints cancelButtonC = createGridBagConstraints(0, 1, 8, 1);
+                    GridBagConstraints cancelButtonC = createGridBagConstraints(0, 1, 9, 1);
                     cancelButtonC.weightx = 1;
                     cancelButtonC.anchor = GridBagConstraints.SOUTHEAST;
                     localPane.add(cancelButton, cancelButtonC);
@@ -422,17 +436,6 @@ public class Main {
         GridBagConstraints apiFieldC = createGridBagConstraints(1, 1, 0, 1);
         cfgPane.add(apiField, apiFieldC);
 
-        //Graph currency
-        JLabel graphCurrLabel = new JLabel("Graph currency: ");
-        GridBagConstraints graphCurrLabelC = createGridBagConstraints(0, 1, 1, 1);
-        cfgPane.add(graphCurrLabel, graphCurrLabelC);
-
-        JComboBox<Currency> graphCurrBox = new JComboBox<Currency>(Currency.values());
-        graphCurrBox.setSelectedItem(Db.getGraphCurrency());
-        GridBagConstraints graphCurrBoxC = createGridBagConstraints(1, 1, 1, 1);
-        graphCurrBoxC.anchor = GridBagConstraints.WEST;
-        cfgPane.add(graphCurrBox, graphCurrBoxC);
-
         //Exchange rate
         boolean willUpdateRate = Db.getAutoRate();
         JTextField rateField = new JTextField(willUpdateRate ? "" : Db.getExchangeRate(), 10); //Do not show outdated price
@@ -456,7 +459,7 @@ public class Main {
             }
         });
 
-        GridBagConstraints rateFieldC = createGridBagConstraints(1, 1, 2, 1);
+        GridBagConstraints rateFieldC = createGridBagConstraints(1, 1, 1, 1);
         cfgPane.add(rateField, rateFieldC);
 
         JCheckBox autoRate = new JCheckBox("Automatic exchange rate, else specify CAD to USD:", Db.getAutoRate());
@@ -466,7 +469,7 @@ public class Main {
             if(e.getStateChange() == 1)
                 rateField.setText(Db.getExchangeRate());
         });
-        GridBagConstraints autoRateC = Main.createGridBagConstraints(0, 1, 2, 1);
+        GridBagConstraints autoRateC = Main.createGridBagConstraints(0, 1, 1, 1);
         cfgPane.add(autoRate, autoRateC);
 
         return cfgPane;

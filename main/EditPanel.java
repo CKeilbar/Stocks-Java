@@ -12,16 +12,16 @@ class EditPanel extends JPanel {
     private JTextField quantityField;
     private JComboBox<Currency> currBox;
     private JTextField tickerField;
-    private JCheckBox updateBox;
+    private JCheckBox priceUpdateBox;
     private JTextField priceField;
+    private JCheckBox divUpdateBox;
+    private JTextField divField;
     private JPanel tagsPane;
     private ArrayList<JComboBox<String>> boxes;
-    private JFrame parentFrame;
 
     //Create panel and prepopulate fields
-    public EditPanel(JFrame parentFrame, Entry entry) {
+    public EditPanel(Entry entry) {
         setLayout(new GridBagLayout());
-        this.parentFrame = parentFrame;
 
         //Name
         JLabel tickerLabel = new JLabel("Name/Ticker");
@@ -68,8 +68,8 @@ class EditPanel extends JPanel {
         priceFieldC.anchor = GridBagConstraints.EAST;
         add(priceField, priceFieldC);
 
-        updateBox = new JCheckBox("Automatic price, else specify:", entry != null ? entry.getUpdatePrice() : true);
-        updateBox.addItemListener(e -> {
+        priceUpdateBox = new JCheckBox("Automatic price, else specify:", entry != null ? entry.getUpdatePrice() : true);
+        priceUpdateBox.addItemListener(e -> {
             if(e.getStateChange() == 1){
                 priceField.setText("");
                 priceField.setEditable(false);
@@ -78,8 +78,30 @@ class EditPanel extends JPanel {
                 priceField.setEditable(true);
             }
         });
-        GridBagConstraints updateBoxC = Main.createGridBagConstraints(0, 1, 3, 1);
-        add(updateBox, updateBoxC);
+        GridBagConstraints priceUpdateBoxC = Main.createGridBagConstraints(0, 1, 3, 1);
+        add(priceUpdateBox, priceUpdateBoxC);
+
+        //Yield
+        divField = new JTextField(entry != null ? entry.getYield() : "");
+        divField.setEditable(entry != null ? !entry.getUpdateDiv() : false);
+        GridBagConstraints divFieldC = Main.createGridBagConstraints(1, 1, 4, 1);
+        divFieldC.weightx = 0.5;
+        divFieldC.fill = GridBagConstraints.HORIZONTAL;
+        divFieldC.anchor = GridBagConstraints.EAST;
+        add(divField, divFieldC);
+
+        divUpdateBox = new JCheckBox("Automatic yield, else specify (%):", entry != null ? entry.getUpdateDiv() : true);
+        divUpdateBox.addItemListener(e -> {
+            if(e.getStateChange() == 1){
+                divField.setText("");
+                divField.setEditable(false);
+            }
+            else{
+                divField.setEditable(true);
+            }
+        });
+        GridBagConstraints divUpdateBoxC = Main.createGridBagConstraints(0, 1, 4, 1);
+        add(divUpdateBox, divUpdateBoxC);
 
         //Top row
         tagsPane = new JPanel(new GridLayout(0, 2));
@@ -131,14 +153,13 @@ class EditPanel extends JPanel {
             boxes.add(newTagValueField);
             tagsPane.add(addItemButton);
 
-            parentFrame.getContentPane().validate();
-            parentFrame.getContentPane().repaint();
+            this.validate();
         });
         tagsPane.add(addItemButton);
 
         //Scroll box
         JScrollPane tagScrollPane = new JScrollPane(tagsPane);
-        GridBagConstraints tagScrollPaneC = Main.createGridBagConstraints(0, 2, 4, 4);
+        GridBagConstraints tagScrollPaneC = Main.createGridBagConstraints(0, 2, 5, 4);
         tagScrollPaneC.weighty = 0.5;
         tagScrollPaneC.weightx = 0.5;
         tagScrollPaneC.fill = GridBagConstraints.BOTH;
@@ -158,8 +179,12 @@ class EditPanel extends JPanel {
     }
 
     //Create panel without prepopulating
-    public EditPanel(JFrame parentFrame) {
-        this(parentFrame, null);
+    public EditPanel() {
+        this(null);
+    }
+
+    private boolean isValidNum(float num){
+        return num > 0f && Float.isFinite(num);
     }
 
     //Tries to construct the entry according to the values in the panel, creating a popup displaying the result
@@ -168,9 +193,11 @@ class EditPanel extends JPanel {
     public Entry tryConstruct(boolean modify) {
         //Key entry properties
         String ticker = tickerField.getText();
-        float quantity = 0f;
-        boolean willUpdatePrice = updateBox.isSelected();
-        float price = 0f;
+        float quantity = -1f;
+        boolean willUpdatePrice = priceUpdateBox.isSelected();
+        boolean willUpdateDiv = divUpdateBox.isSelected();
+        float price = -1f;
+        float div = -1f;
         Entry toAdd = null;
         
         String msg = "";
@@ -182,31 +209,65 @@ class EditPanel extends JPanel {
             resultPassed = false;
         }
 
+        //Number checks use this string format for failure
+        String msgStart = "Could not interpret the ";
+        String msgMiddle = " field (";
+        String msgEnd = ") as a valid number.";
+
         //Quantity check
         if(resultPassed){
             String quantityText = quantityField.getText();
             try{
                 quantity = Float.parseFloat(quantityText);
-            } catch(NumberFormatException unused){
-                msg = "Could not interpret the quantity field (" + quantityText + ") as a number.";
+            } catch(NumberFormatException unused){}
+            if(!isValidNum(quantity)){
+                msg = msgStart + "quantity" + msgMiddle + quantityText + msgEnd;
                 resultPassed = false;
             }
         }
             
-        //Price check
+        //Manual price check
         if(resultPassed && !willUpdatePrice){
             String priceText = priceField.getText();
             try{
                 price = Float.parseFloat(priceText);
-            } catch(NumberFormatException unused){
-                msg = "Could not interpret the price field (" + priceText + ") as a number.";
+            } catch(NumberFormatException unused){}
+            if(!isValidNum(price)){
+                msg = msgStart + "price" + msgMiddle + priceText + msgEnd;
                 resultPassed = false;
             }
         }
-        else if(resultPassed){
+
+        //Manual yield check
+        if(resultPassed && !willUpdateDiv){
+            String divText = divField.getText();
+            try{
+                div = Float.parseFloat(divText)/100f;
+            } catch(NumberFormatException unused){}
+            if(div < 0f || !Float.isFinite(div)){
+                msg = msgStart + "yield" + msgMiddle + divText + msgEnd;
+                resultPassed = false;
+            }
+        }
+        
+        //Updates come last to reduce traffic
+        msgStart = "Could not find a ";
+        msgEnd = " for the ticker " + ticker + ".";
+
+        //Auto price check
+        if(resultPassed && willUpdatePrice){
             price = PriceWorker.updatePrice(ticker);
             if(price < 0f){
-                msg = "Could not find a price for the ticker " + ticker + ".";
+                msg = msgStart + "price" + msgEnd;
+                resultPassed = false;
+            }
+        }
+
+        //Auto yield check
+        if(resultPassed && willUpdateDiv){
+            div = PriceWorker.updateDiv(ticker, price);
+            if(div < 0f){
+                msg = msgStart + "yield" + msgEnd;
                 resultPassed = false;
             }
         }
@@ -214,7 +275,7 @@ class EditPanel extends JPanel {
         //All checks complete, create entry
         if(resultPassed){
             //Create the entry and clear the fields
-            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, (Currency) currBox.getSelectedItem());
+            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, willUpdateDiv, div, (Currency) currBox.getSelectedItem());
             
             for(int i = 0; i < boxes.size(); i += 2){
                 Object tagO = boxes.get(i).getSelectedItem();
@@ -239,7 +300,10 @@ class EditPanel extends JPanel {
                 tickerField.setText("");
                 priceField.setText("");
                 if(!willUpdatePrice){
-                    updateBox.doClick();
+                    priceUpdateBox.doClick();
+                }
+                if(!willUpdateDiv){
+                    divUpdateBox.doClick();
                 }
                 for(Component i : tagsPane.getComponents()){
                     if(i instanceof JComboBox<?>){
@@ -256,9 +320,12 @@ class EditPanel extends JPanel {
             if(willUpdatePrice){
                 msg += String.format("\nFound a price of %.2f.", price);
             }
+            if(willUpdateDiv){
+                msg += String.format("\nFound a yield of %.2f%%.", 100*div);
+            }
         }
 
-        JOptionPane.showMessageDialog(parentFrame, msg, (resultPassed ? "Operation successful" : "Operation failed"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
+        JOptionPane.showMessageDialog(this, msg, (resultPassed ? "Operation successful" : "Operation failed"), (resultPassed ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE));
 
         return toAdd;
     }

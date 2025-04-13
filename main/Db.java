@@ -146,7 +146,13 @@ class Db {
 
     //Searches through the entries to find the ones satisfying the criteria
     //The inc values MUST be present, and the rem values MUST NOT, this functions as a logical AND
-    static Map<String, Float> findGraphables(String axis, ArrayList<String> incVal, ArrayList<String> incTag, ArrayList<String> remVal, ArrayList<String> remTag){
+    //The return value is an object array {Map<String,Float> graphable, Float total, Float divTotal}
+    static Object[] findGraphables(String axis, ArrayList<String> incVal, ArrayList<String> incTag, ArrayList<String> remVal, ArrayList<String> remTag, boolean div){
+        Object[] ret = new Object[3];
+        ret[0] = null;
+        ret[1] = 0f;
+        ret[2] = 0f;
+
         ArrayList<Entry> clone = new ArrayList<>(entries);
 
         //Remove all of the entries that don't satisfy the includes
@@ -166,20 +172,29 @@ class Db {
         }
 
         if (clone.size() == 0)
-            return null;
+            return ret;
 
         //Clone now holds only valid values
         Map<String, Float> unsortedMap = new HashMap<>();
         for(Entry i : clone){
+            Currency curr = i.getCurrency();
+            float total = currencyExchange(i.getValue(), curr, graphCurrency);
+            float payout = currencyExchange(i.getAnnual(), curr, graphCurrency);
+            float value = div ? payout : total;
+            
+            ret[1] = (Float) ret[1] + total;
+            ret[2] = (Float) ret[2] + payout;
+
             String myTag = "".equals(axis) ? i.getTicker() : i.valueForTag(axis); //If no axis, use ticker as label
-            float value = currencyExchange(i.getValue(), i.getCurrency(), graphCurrency);
-            unsortedMap.put(myTag, value + unsortedMap.getOrDefault(myTag, 0f));
+            if(value != 0f)
+                unsortedMap.put(myTag, value + unsortedMap.getOrDefault(myTag, 0f));
         }
 
         Map<String, Float> retMap = new LinkedHashMap<>(); //Order is required
         //Sort by value
         unsortedMap.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue())).forEach(entry -> retMap.put(entry.getKey(), entry.getValue()));
-        return retMap;
+        ret[0] = retMap;
+        return ret;
     }
 
     //Convert the total from the given currency to the target currency, using the current exchange rate

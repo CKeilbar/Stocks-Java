@@ -4,18 +4,22 @@ import java.util.*;
 
 //Entries contain a quantity, price, and an optional map of categorizing tags
 class Entry {
+    private String ticker;
     private float quantity;
     private boolean updatePrice;
-    private String ticker;
     private float price;
+    private boolean updateDiv;
+    private float div;
     private Currency currency;
     private Map<String, String> tagMap;
 
-    public Entry(String ticker, float quantity, boolean updatePrice, float price, Currency currency){
+    public Entry(String ticker, float quantity, boolean updatePrice, float price, boolean updateDiv, float div, Currency currency){
         this.ticker = ticker;
         this.quantity = quantity;
         this.updatePrice = updatePrice;
         this.price = price;
+        this.updateDiv = updateDiv;
+        this.div = div;
         this.currency = currency;
         this.tagMap = new HashMap<>(32);
     }
@@ -25,8 +29,8 @@ class Entry {
         Entry retVal;
         try{
             String[] splitLine = line.split(",");
-            retVal = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), Db.readBool(splitLine[2]), Float.parseFloat(splitLine[3]), Currency.valueOf(splitLine[4]));
-            for(int i = 5; i < splitLine.length; i += 2){
+            retVal = new Entry(splitLine[0], Float.parseFloat(splitLine[1]), Db.readBool(splitLine[2]), Float.parseFloat(splitLine[3]), Db.readBool(splitLine[4]), Float.parseFloat(splitLine[5]), Currency.valueOf(splitLine[6]));
+            for(int i = 7; i < splitLine.length; i += 2){
                 retVal.addValue(splitLine[i], splitLine[i+1]);
             }
         } catch(Exception unused){//Something went wrong while parsing the string, don't complete the construction
@@ -48,12 +52,32 @@ class Entry {
         return Float.toString(price);
     };
 
+    public float getPriceF(){
+        return price;
+    }
+
     public void setPrice(float newPrice){
         price = newPrice;
     }
 
     public boolean getUpdatePrice(){
         return updatePrice;
+    }
+
+    public boolean getUpdateDiv(){
+        return updateDiv;
+    }
+
+    public String getYield(){
+        return String.format("%.2f", 100f*div);
+    }
+
+    public float getAnnual(){
+        return div*getValue();
+    }
+
+    public void setDiv(float newDiv){
+        div = newDiv;
     }
 
     public String getQuantity(){
@@ -83,7 +107,7 @@ class Entry {
     //The line that gets saved in the file
     @Override
     public String toString(){
-        String essentials = String.join(",", ticker, Float.toString(quantity), Db.writeBool(updatePrice), Float.toString(price), currency.toString());
+        String essentials = String.join(",", ticker, getQuantity(), Db.writeBool(updatePrice), getPrice(), Db.writeBool(updateDiv), Float.toString(div), currency.toString());
         String tags = System.lineSeparator();
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             tags = "," + i.getKey() + "," + i.getValue() + tags;
@@ -94,7 +118,7 @@ class Entry {
 
     //The line that gets written to the display
     public String displayLine(){
-        String summary = String.join(", ", "Ticker: " + ticker, "Currency: " + getCurrency(), "Quantity: " + Float.toString(quantity), "Price: " + Float.toString(price));
+        String summary = String.join(", ", "Ticker: " + ticker, "Currency: " + getCurrency(), "Quantity: " + getQuantity(), "Price: " + getPrice(), "Yield: " + getYield() + "%");
         for(Map.Entry<String, String> i : tagMap.entrySet()){
             summary += ", " + i.getKey() + ": " + i.getValue();
         }
