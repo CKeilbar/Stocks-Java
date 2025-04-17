@@ -40,22 +40,24 @@ class PriceWorker extends SwingWorker<ArrayList<String>, Void> {
         for(int i = 0; i < numEntries; i++){
             Entry entry = Db.getEntry(i);
             setProgress(progress++); //Increment on each ticker
-
+            boolean priceFailed = false;
             if(entry.getUpdatePrice()){
                 String ticker = entry.getTicker();
                 float price = updatePrice(ticker);
                 if(price >= 0f)
                     entry.setPrice(price);
-                else
-                    failedEntries.add(ticker);
+                else{
+                    failedEntries.add(ticker + " (price)");
+                    priceFailed = true;
+                }
             }
-            if(entry.getUpdateDiv()){
+            if(entry.getUpdateDiv() && !priceFailed){
                 String ticker = entry.getTicker();
                 float div = updateDiv(ticker, entry.getPriceF());
                 if(div >= 0f)
                     entry.setDiv(div);
                 else if(!failedEntries.contains(ticker))
-                    failedEntries.add(ticker);
+                    failedEntries.add(ticker + " (yield)");
             }
         }
 
