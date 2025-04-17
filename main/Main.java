@@ -425,7 +425,8 @@ public class Main {
         viewPane.add(viewScrollPane, viewScrollPaneC);
     };
 
-    //Only holds the API key at present
+    //Holds API key and exchange rate
+    //Uses loss of focus to update the database instead of every keystroke or making the UI elements public
     private JPanel createCfgPane(){
         JPanel cfgPane = new JPanel(new GridBagLayout());
 
@@ -452,7 +453,7 @@ public class Main {
         //Exchange rate
         boolean willUpdateRate = Db.getAutoRate();
         JTextField rateField = new JTextField(willUpdateRate ? "" : Db.getExchangeRate(), 10); //Do not show outdated price
-        rateField.setText("Manual exchange rate from 1 CAD to USD");
+        rateField.setToolTipText("Manual exchange rate from 1 CAD to USD");
         rateField.setEditable(!willUpdateRate);
         rateField.addFocusListener(new FocusListener() {
             @Override
