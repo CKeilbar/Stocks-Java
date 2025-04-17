@@ -35,6 +35,11 @@ public class Main {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter(){
             public void windowClosing(WindowEvent e){
+                //Force the selected component to lose focus, flushing the configs
+                Component focusedComponent = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focusedComponent != null) {
+                    focusedComponent.dispatchEvent(new FocusEvent(focusedComponent, FocusEvent.FOCUS_LOST));
+                }
                 Db.writeDb();
             };
         });
