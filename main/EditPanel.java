@@ -206,6 +206,7 @@ class EditPanel extends JPanel {
         float quantity = -1f;
         boolean willUpdatePrice = priceUpdateBox.isSelected();
         boolean willUpdateDiv = divUpdateBox.isSelected();
+        Currency curr = (Currency) currBox.getSelectedItem();
         float price = -1f;
         float div = -1f;
         Entry toAdd = null;
@@ -259,6 +260,12 @@ class EditPanel extends JPanel {
                 resultPassed = false;
             }
         }
+
+        //Canadian yield check
+        if(resultPassed && willUpdateDiv && (curr == Currency.CAD || ticker.endsWith(".TRT") || ticker.endsWith(".TRV"))){
+            msg = "The Alpha Vantage API does not support Canadian dividends.";
+            resultPassed = false;
+        }
         
         //Updates come last to reduce traffic
         msgStart = "Could not find a ";
@@ -285,7 +292,7 @@ class EditPanel extends JPanel {
         //All checks complete, create entry
         if(resultPassed){
             //Create the entry and clear the fields
-            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, willUpdateDiv, div, (Currency) currBox.getSelectedItem());
+            toAdd = new Entry(ticker, quantity, willUpdatePrice, price, willUpdateDiv, div, curr);
             
             for(int i = 0; i < boxes.size(); i += 2){
                 Object tagO = boxes.get(i).getSelectedItem();
