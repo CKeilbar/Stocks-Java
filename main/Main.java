@@ -51,6 +51,7 @@ public class Main {
 
         frame.add(mainPane);
         frame.pack();//Automatically sets the size, probably not optimal...
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 
@@ -75,6 +76,7 @@ public class Main {
         createPane.add(dateLabel, dateLabelC);
 
         JButton saveButton = new JButton("Create");
+        saveButton.setToolTipText("Create a new entry");
         saveButton.addActionListener(e -> {
             Entry created = createPane.tryConstruct(false);
             if (created != null){
@@ -90,6 +92,7 @@ public class Main {
 
         //Button unique to this tab
         JButton updateButton = new JButton("Update all prices");
+        updateButton.setToolTipText("Update all configured entries using the Alpha Vantage API");
         updateButton.addActionListener(e -> {
             //Blocks others
             JDialog progressDialog = new JDialog(frame, "Updating prices...", Dialog.ModalityType.APPLICATION_MODAL);
@@ -167,14 +170,17 @@ public class Main {
 
         //Graph Buttons
         JCheckBox divCheckBox = new JCheckBox("Dividends");
+        divCheckBox.setToolTipText("If enabled, display annual income instead of value on the graph");
 
         JComboBox<Currency> graphCurrBox = new JComboBox<Currency>(Currency.values());
+        graphCurrBox.setToolTipText("Graph currency");
         graphCurrBox.setSelectedItem(Db.getGraphCurrency());
         graphCurrBox.addActionListener(e -> {
             Db.setGraphCurrency((Currency) graphCurrBox.getSelectedItem());
         });
 
         JButton graphButton = new JButton("Graph");
+        graphButton.setToolTipText("Create a graph using the specified entries and options");
         //Launch the graph
         graphButton.addActionListener(e -> {
             int length = Db.maxValsForTag()+1;
@@ -253,6 +259,7 @@ public class Main {
                 piePane.add(legendPanel, legendPanelC);
 
                 JButton closeButton = new JButton("Close");
+                closeButton.setToolTipText("Close this window");
                 closeButton.addActionListener(lamb -> {
                         graphFrame.dispose();
                 });
@@ -274,7 +281,7 @@ public class Main {
         buttonPanelC.anchor = GridBagConstraints.SOUTHEAST;
         graphPane.add(buttonPanel, buttonPanelC);
 
-        JLabel instructionsLabel = new JLabel("Use the left column to select the tag that is displayed on the graph. Use the other columns to filter out entries.");
+        JLabel instructionsLabel = new JLabel("Use the left column to select the tag that is displayed on the graph. Use the other columns to filter entries.");
         GridBagConstraints instructionsLabelC = createGridBagConstraints(0, 1, 1, 1);
         instructionsLabelC.anchor = GridBagConstraints.SOUTHWEST;
         instructionsLabelC.weightx = 0.5;
@@ -285,6 +292,7 @@ public class Main {
         String[] tags = Db.getTags();
         for(int i = 0; i < tags.length; i++){
             JButton tagNameButton = new JButton(tags[i]);
+            tagNameButton.setToolTipText("Tag \"" + tags[i] + "\"");
             tagNameButton.addActionListener(e -> {
                 Color currentColor = tagNameButton.getBackground();
                 //Toggle off all other buttons
@@ -304,6 +312,7 @@ public class Main {
             for(int j = 0; j < widestRow; j++){
                 if(j < valuesInThisRow){
                     JButton valueButton = new JButton(values[j]);
+                    valueButton.setToolTipText("Value \"" + values[j] + "\" for tag \"" + tags[i] + "\"");
                     valueButton.addActionListener(e -> {
                         Color currentColor = valueButton.getBackground();
                         if(currentColor == Color.GREEN){
@@ -337,6 +346,7 @@ public class Main {
             Entry entryToModify = Db.getEntry(i);
 
             JButton deleteButton = new JButton("Remove");
+            deleteButton.setToolTipText("Remove this entry");
             deleteButton.addActionListener(e -> {
                 Db.removeEntry(entryToModify);
                 dateLabel.setText(Db.datesToLabel());
@@ -350,6 +360,7 @@ public class Main {
             viewTagPane.add(deleteButton, deleteButtonC);
 
             JButton modifyButton = new JButton("Modify");
+            modifyButton.setToolTipText("Modify this entry");
             modifyButton.addActionListener(new ActionListener(){
                 @Override
                 public void actionPerformed(ActionEvent e){
@@ -359,6 +370,7 @@ public class Main {
                     EditPanel localPane = new EditPanel(entryToModify);
 
                     JButton saveButton = new JButton("Modify");
+                    saveButton.setToolTipText("Modify this entry");
                     saveButton.addActionListener(new ActionListener(){
                         @Override
                         public void actionPerformed(ActionEvent e){
@@ -378,6 +390,7 @@ public class Main {
                     localPane.add(saveButton, saveButtonC);
 
                     JButton cancelButton = new JButton("Cancel");
+                    cancelButton.setToolTipText("Cancel modification");
                     cancelButton.addActionListener(lamb -> {
                         editFrame.dispose();
                     });
@@ -421,8 +434,8 @@ public class Main {
         GridBagConstraints apiLabelC = createGridBagConstraints(0, 1, 0, 1);
         cfgPane.add(apiLabel, apiLabelC);
 
-        JTextField apiField = new JTextField(18); //Key is 16 columns, use 18 for space
-        apiField.setText(Db.getApiKey());
+        JTextField apiField = new JTextField(Db.getApiKey(), 18); //Key is 16 columns, use 18 for space
+        apiField.setToolTipText("Alpha Vantage API key from https://www.alphavantage.co/support/#api-key");
         apiField.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {} //Do nothing
@@ -439,6 +452,7 @@ public class Main {
         //Exchange rate
         boolean willUpdateRate = Db.getAutoRate();
         JTextField rateField = new JTextField(willUpdateRate ? "" : Db.getExchangeRate(), 10); //Do not show outdated price
+        rateField.setText("Manual exchange rate from 1 CAD to USD");
         rateField.setEditable(!willUpdateRate);
         rateField.addFocusListener(new FocusListener() {
             @Override
@@ -463,6 +477,7 @@ public class Main {
         cfgPane.add(rateField, rateFieldC);
 
         JCheckBox autoRate = new JCheckBox("Automatic exchange rate, else specify CAD to USD:", Db.getAutoRate());
+        autoRate.setToolTipText("If enabled, the exchange rate will be fetched when needed from Alpha Vantage using the configured API key");
         autoRate.addItemListener(e -> {
             rateField.setEditable(Db.getAutoRate());
             Db.toggleAutoRate();

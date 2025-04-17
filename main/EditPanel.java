@@ -29,6 +29,7 @@ class EditPanel extends JPanel {
         add(tickerLabel, tickerLabelC);
 
         tickerField = new JTextField(entry != null ? entry.getTicker() : "");
+        tickerField.setToolTipText("The name of the entry; automatic pricing and yield functionality uses this ticker with the Alpha Vantage API (TSX tickers should be appended with '.TRT' and venture tickers with '.TRV')");
         GridBagConstraints tickerFieldC = Main.createGridBagConstraints(1, 1, 0, 1);
         tickerFieldC.weightx = 0.5;
         tickerFieldC.fill = GridBagConstraints.HORIZONTAL;
@@ -43,6 +44,7 @@ class EditPanel extends JPanel {
         currBox = new JComboBox<Currency>(Currency.values());
         if (entry != null)
             currBox.setSelectedItem(entry.getCurrency());
+        currBox.setToolTipText("Currency");
         GridBagConstraints currBoxC = Main.createGridBagConstraints(1, 1, 1, 1);
         currBoxC.anchor = GridBagConstraints.WEST;
         add(currBox, currBoxC);
@@ -53,6 +55,7 @@ class EditPanel extends JPanel {
         add(quantityLabel, quantityLabelC);
 
         quantityField = new JTextField(entry != null ? entry.getQuantity() : "");
+        quantityField.setToolTipText("Quantity");
         GridBagConstraints quantityFieldC = Main.createGridBagConstraints(1, 1, 2, 1);
         quantityFieldC.weightx = 0.5;
         quantityFieldC.fill = GridBagConstraints.HORIZONTAL;
@@ -61,6 +64,7 @@ class EditPanel extends JPanel {
 
         //Price
         priceField = new JTextField(entry != null ? entry.getPrice() : "");
+        priceField.setToolTipText("Manual price");
         priceField.setEditable(entry != null ? !entry.getUpdatePrice() : false);
         GridBagConstraints priceFieldC = Main.createGridBagConstraints(1, 1, 3, 1);
         priceFieldC.weightx = 0.5;
@@ -69,6 +73,7 @@ class EditPanel extends JPanel {
         add(priceField, priceFieldC);
 
         priceUpdateBox = new JCheckBox("Automatic price, else specify:", entry != null ? entry.getUpdatePrice() : true);
+        priceUpdateBox.setToolTipText("If enabled, prices are fetched using the specified ticker from Alpha Vantage using the configured API key");
         priceUpdateBox.addItemListener(e -> {
             if(e.getStateChange() == 1){
                 priceField.setText("");
@@ -83,6 +88,7 @@ class EditPanel extends JPanel {
 
         //Yield
         divField = new JTextField(entry != null ? entry.getYield() : "");
+        divField.setToolTipText("Manual annual yield");
         divField.setEditable(entry != null ? !entry.getUpdateDiv() : false);
         GridBagConstraints divFieldC = Main.createGridBagConstraints(1, 1, 4, 1);
         divFieldC.weightx = 0.5;
@@ -91,6 +97,7 @@ class EditPanel extends JPanel {
         add(divField, divFieldC);
 
         divUpdateBox = new JCheckBox("Automatic yield, else specify (%):", entry != null ? entry.getUpdateDiv() : true);
+        divUpdateBox.setToolTipText("If enabled, yields for American-listed tickers are estimated using the two most recent distributions from Alpha Vantage using the configured API key");
         divUpdateBox.addItemListener(e -> {
             if(e.getStateChange() == 1){
                 divField.setText("");
@@ -111,15 +118,18 @@ class EditPanel extends JPanel {
         //Create row
         boxes = new ArrayList<>();
         JButton addItemButton = new JButton("+");
+        addItemButton.setToolTipText("Create a new association for this entry");
         addItemButton.addActionListener(e -> {
             tagsPane.remove(addItemButton);
             JComboBox<String> newTagField = new JComboBox<String>(Db.getTags());
+            newTagField.setToolTipText("Tag");
             newTagField.setEditable(true);
 
             tagsPane.add(newTagField);
             boxes.add(newTagField);
 
             JComboBox<String> newTagValueField = new JComboBox<String>();
+            newTagField.setToolTipText("Value");
             newTagValueField.setEditable(true);
             Component component = newTagValueField.getEditor().getEditorComponent();
             if (component instanceof JTextField){
