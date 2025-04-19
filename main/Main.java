@@ -237,20 +237,45 @@ public class Main {
                 Pie myPie = new Pie(graphable);
                 GridBagConstraints myPieC = createGridBagConstraints(0, 1, 1, 1);
                 myPieC.fill = GridBagConstraints.BOTH;
-                myPieC.weightx = 0.5;
-                myPieC.weighty = 0.9;
+                myPieC.weightx = 1.0;
+                myPieC.weighty = 1.0;
                 piePane.add(myPie, myPieC);
 
                 JLabel graphTitle = new JLabel(String.format("Category: %s - Total: $%,.2f - Yield: $%,.2f (%.2f%%) - %s", "".equals(axisTag) ? "None" : axisTag, totalValue, toalPayout, 100f*toalPayout/totalValue, Db.getGraphCurrency().toString()));
                 GridBagConstraints graphTitleC = createGridBagConstraints(0, 1, 0, 1);
                 piePane.add(graphTitle, graphTitleC);
 
+                JPanel legendPanel = new JPanel(new FlowLayout()) {
+                    //Add synchronized?
+                    @Override
+                    public Dimension getPreferredSize() {
+                        Container parent = getParent();
+                        if(parent != null){
+                            int maxWidth = parent.getWidth();
+                            int rowHeight = 0;
+                            int rowWidth = 5; //Initial left padding
+                            int totalHeight = 0;
+                            int padding = 5;
 
-                JPanel legendPanel = new JPanel();
+                            for(Component comp : this.getComponents()){
+                                Dimension compSize = comp.getPreferredSize();
+                                int newLen = compSize.width + padding; //Right padding
+                                //Check for wraparound
+                                if(rowWidth + newLen > maxWidth){
+                                    totalHeight += rowHeight + padding; //Upper padding
+                                    rowWidth = padding; //Initial left padding
+                                    rowHeight = 0;
+                                }
+                                rowWidth += newLen;
+                                rowHeight = Math.max(rowHeight, compSize.height);
+                            }
+                            totalHeight += rowHeight + 2*padding; //Padding above and below last row
+                            return new Dimension(maxWidth, totalHeight);
+                        }
+                        return super.getPreferredSize();
+                    }
+                };
                 GridBagConstraints legendPanelC = createGridBagConstraints(0, 1, 2, 1);
-                legendPanelC.fill = GridBagConstraints.BOTH;
-                legendPanelC.weightx = 0.5;
-                legendPanelC.weighty = 0.1;
 
                 int[] j = {0};//Using an array means it doesn't have to be atomic for some reason
                 ArrayList<Color> colourList = myPie.getColours();
