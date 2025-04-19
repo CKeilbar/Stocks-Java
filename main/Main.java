@@ -61,7 +61,7 @@ public class Main {
     }
 
     //Convenience method for creating the constraints
-    //Aditional manual configuration will be optionally needed to set the weights
+    //Additional manual configuration will be optionally needed to set the weights
     public static GridBagConstraints createGridBagConstraints(int xLoc, int xWidth, int yLoc, int yHeight){
         GridBagConstraints returnable = new GridBagConstraints();
         returnable.gridx = xLoc;
@@ -246,9 +246,9 @@ public class Main {
                 piePane.add(graphTitle, graphTitleC);
 
                 JPanel legendPanel = new JPanel(new FlowLayout()) {
-                    //Add synchronized?
                     @Override
                     public Dimension getPreferredSize() {
+                    synchronized(getTreeLock()){//Not strictly necessary
                         Container parent = getParent();
                         if(parent != null){
                             int maxWidth = parent.getWidth();
@@ -274,7 +274,7 @@ public class Main {
                         }
                         return super.getPreferredSize();
                     }
-                };
+                }};
                 GridBagConstraints legendPanelC = createGridBagConstraints(0, 1, 2, 1);
 
                 int[] j = {0};//Using an array means it doesn't have to be atomic for some reason
